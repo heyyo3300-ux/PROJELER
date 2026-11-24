@@ -12,6 +12,7 @@
   const moving = (id, baseX, baseY, w, axis = 'x', range = 90, period = 4.4, phase = 0) => ({ id, baseX, baseY, w, h: 24, type: 'moving', axis, range, period, phase });
   const drone = (id, minX, maxX, period = 4, phase = 0, baseY = 538) => ({ id, kind: 'drone', minX, maxX, baseY, w: 50, h: 40, period, phase });
   const barrier = (id, x, period = 4.8, activeDuration = 1.7, phase = 0) => ({ id, kind: 'barrier', x, y: 402, w: 26, h: 188, period, activeDuration, warningDuration: 0.7, phase });
+  const pendulum = (id, anchorX, period = 4) => ({ id, kind: 'pendulum', anchorX, anchorY: 310, ropeLength: 200, amplitude: 0.62, period, phase: 0, w: 44, h: 44 });
   const item = (x, y, i) => ({ id: 'pack-' + i, x, y, type: ['plastic', 'glass', 'can'][i % 3] });
   function makeLevel(id, name, subtitle, width, targetTime, theme, terrain, upper, low, high, checkpoints) {
     return {
@@ -85,8 +86,75 @@
   LEVELS[5].movingPlatforms = [moving('energy-bridge-1', 1180, 475, 150, 'x', 90, 3.7), moving('energy-bridge-2', 2660, 460, 150, 'y', 40, 3.8), moving('energy-bridge-3', 4180, 465, 150, 'x', 100, 3.7), moving('energy-bridge-4', 5710, 455, 150, 'x', 95, 3.4)];
   LEVELS[5].hazards = [drone('energy-cleaner-1', 2040, 2140, 3.4), drone('energy-cleaner-2', 5100, 5200, 3.3), drone('energy-cleaner-3', 6760, 6850, 3.2), barrier('energy-gate-1', 3640, 4.1, 1.8, 0.5), barrier('energy-gate-2', 6380, 4, 1.8, 0.8)];
   LEVELS.slice(3).forEach(level => { level.signs[0].text = level.mechanic + ' · ' + level.tip; });
+  // The original six journeys retain their identity and saved result index.
+  // Stretch the actual obstacle course, not merely an empty finish corridor.
+  LEVELS.forEach(level => {
+    const scale = 1.22;
+    for (const s of level.solids) { s.x *= scale; s.w *= scale; }
+    for (const s of level.movingPlatforms) { s.baseX *= scale; s.w *= scale; if (s.axis === 'x') s.range *= scale; s.period *= 1.08; }
+    for (const h of level.hazards) { if (h.kind === 'drone') { h.minX *= scale; h.maxX *= scale; h.period *= 1.1; } else h.x *= scale; }
+    level.items.forEach(p => { p.x *= scale; }); level.checkpoints.slice(1).forEach(p => { p.x *= scale; });
+    level.signs.forEach(s => { s.x *= scale; });
+    level.width *= scale; level.targetTime = Math.round(level.targetTime * 1.22 + 25); level.vents = [];
+  });
+  const newWorlds = [
+    ['Sulak Alan Macerası', 'Sıçrayan nilüferlerle suyun döngüsünü koru.', 'wetland', 10000, 'Nilüfer sıçrayışı', 'Esnek nilüfere basınca yükselirsin. Yüksek yolları keşfet, aşağıda güvenli zemin seni bekler.'],
+    ['Buzul Işıltısı', 'Kaygan yolların ritmini bul.', 'ice', 10800, 'Eriyen buz platformları', 'Buzda durmak biraz daha uzun sürer. Titreyen platformdan zamanında zıpla; kısa süre sonra yeniden oluşur.'],
+    ['Jeotermal Keşif', 'Doğanın sıcak nefesiyle yükseğe çık.', 'volcano', 11600, 'Basınçlı hava bacaları', 'Sarı uyarıdan sonra hava yükselir. Bu sıcak hava zararsızdır ve RVM’yi yüksek rotaya taşır.'],
+    ['Döngü Bahçesi', 'Bütün yollar yeşil bir geleceğe çıkar.', 'garden', 12400, 'Yön değiştiren bantlar', 'Taşıma bantlarının yönüne bak; ters yönde koşarken hızını ayarla. Döngünün son sürprizi seni bekliyor.']
+  ];
+  for (let n = 0; n < newWorlds.length; n++) {
+    const [name, subtitle, theme, width, mechanic, tip] = newWorlds[n];
+    const terrain = [], upper = [], low = [], high = [], cps = [], movers = [], hazards = [], vents = [];
+    const span = width / 8, gap = 220 + n * 15;
+    for (let k = 0; k < 8; k++) {
+      const start = k * span, land = k === 7 ? span : span - gap;
+      terrain.push(ground(start, land), crate(start + 510, 88 + n * 4));
+      const highX = start + Math.min(land - 290, 750);
+      upper.push(platform(start + 250, 450, 240), platform(highX, 330, 230));
+      low.push([start + (k ? 130 : 250), 544]);
+      if (k % 2) high.push([highX + 110, 284]);
+      cps.push(k ? start + 40 : 100);
+      if (k < 7) movers.push(moving(theme + '-bridge-' + k, start + land + 45, 475, 155, k % 3 === 1 ? 'y' : 'x', k % 3 === 1 ? 30 : 75, 4.2 - n * 0.15));
+      if (k === 2 || k === 5) hazards.push(drone(theme + '-cleaner-' + k, start + 650, start + 740, 3.8 - n * 0.1));
+      if (k === 4 || k === 6) hazards.push(barrier(theme + '-gate-' + k, start + land - 390, 4.6 - n * 0.1, 1.6, k * 0.13));
+      if (theme === 'wetland' && k < 7) terrain.push({ x: start + 670, y: 590, w: 84, h: 14, type: 'bounce', power: 740 });
+      if (theme === 'ice' && k % 2 === 0) upper.push({ x: start + land - 60, y: 470, w: 180, h: 24, type: 'crumble', collapseAfter: 0.65, recoverAfter: 3.4 });
+      if (theme === 'volcano' && k < 7) vents.push({ id: 'vent-' + k, x: start + 720, y: 350, w: 110, h: 240, period: 4.8, activeDuration: 1.5, warningDuration: 0.7, phase: k * 0.4 });
+      if (theme === 'garden' && k < 7) terrain.push({ x: start + 700, y: 590, w: 210, h: 16, type: 'conveyor', beltSpeed: k % 2 ? -70 : 90 });
+    }
+    const level = makeLevel(n + 6, name, subtitle, width, 245 + n * 20, theme, terrain, upper, low, high, cps);
+    Object.assign(level, { description: subtitle + ' ' + tip, difficulty: ['Uzman', 'Cesur', 'Kaşif', 'Döngü Ustası'][n], difficultyRating: n + 7, mechanic, tip, movingPlatforms: movers, hazards, vents });
+    if (theme === 'ice') { level.friction = 1100; level.acceleration = 1700; }
+    LEVELS.push(level);
+  }
+  const bossNames = ['Çöp Pofuduk', 'Kum Köpürtüsü', 'Teneke Tıkırtı', 'Yaprak Düğümü', 'Vadi Yuvarlağı', 'Enerji Yumağı', 'Nilüfer Bulutu', 'Buzul Pofuru', 'Buhar Tombulu', 'Döngü Girdabı'];
+  LEVELS.forEach((level, index) => {
+    const courseEnd = level.width;
+    level.courseWidth = courseEnd; level.width = courseEnd + 900;
+    level.solids.push(ground(courseEnd, 900));
+    level.checkpoints.push({ x: courseEnd + 70, y: 510 });
+    level.machine = { x: level.width - 190, y: 448, w: 110, h: 142 };
+    level.bossConfig = { name: bossNames[index], x: level.width - 510, y: 434, w: 132, h: 156, maxHealth: 20 + index * 3, attackPeriod: Math.max(2.35, 3.6 - index * 0.12), projectileSpeed: 145 + index * 6, variant: index % 4, arena: { start: courseEnd + 20, end: level.width, checkpointX: courseEnd + 70 } };
+    level.solids.forEach((s, i) => { s.id = 'solid-' + i; });
+    level.signs.push({ x: courseEnd - 180, text: 'Çöp bossunu Döngü Köpüğüyle dağıt! F / Köpük düğmesini basılı tut.' });
+  });
+  LEVELS[0].solids.push({ id: 'park-spring', type: 'bounce', x: 390, y: 590, w: 78, h: 14, power: 690 });
+  LEVELS[0].mechanic = 'Çift zıplama ve esnek zemin';
+  LEVELS[1].solids.push({ id: 'beach-belt', type: 'conveyor', x: 1680, y: 590, w: 190, h: 16, beltSpeed: -55 });
+  LEVELS[1].mechanic = 'Devriye ve taşıma bandı';
+  LEVELS[2].solids.push({ id: 'city-crumble', type: 'crumble', x: 2350, y: 440, w: 170, h: 24, collapseAfter: 0.75, recoverAfter: 3.4 });
+  LEVELS[2].mechanic = 'Enerji kapısı ve çöken platform';
+  LEVELS[3].vents.push({ id: 'forest-draft', x: 3320, y: 350, w: 110, h: 240, period: 5, activeDuration: 1.3, warningDuration: 0.7, phase: 0.2 });
+  LEVELS[3].mechanic = 'Hareketli platform ve rüzgâr';
+  LEVELS[4].hazards.push(pendulum('canyon-swing', LEVELS[4].courseWidth - 550, 4.2));
+  LEVELS[4].mechanic = 'Sallanan ambalaj topu';
+  LEVELS[5].hazards.push(pendulum('energy-swing', LEVELS[5].courseWidth - 550, 3.8));
+  LEVELS[5].mechanic = 'Kapı, köprü ve sarkaç';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const oneWay = s => ['platform', 'moving', 'bounce', 'conveyor', 'crumble'].includes(s.type);
+  const circleHits = (ball, box) => (ball.x - clamp(ball.x, box.x, box.x + box.w)) ** 2 + (ball.y - clamp(ball.y, box.y, box.y + box.h)) ** 2 <= ball.r ** 2;
   class Game {
     constructor(levelIndex = 0) { this.reset(levelIndex); }
     reset(levelIndex = this.levelIndex) {
@@ -94,8 +162,12 @@
       this.level = LEVELS[this.levelIndex];
       this.items = this.level.items.map(p => ({ ...p, collected: false }));
       this.movingPlatforms = this.level.movingPlatforms.map(s => ({ ...s, x: s.baseX, y: s.baseY, dx: 0, dy: 0, vx: 0, vy: 0 }));
-      this.solids = this.level.solids.concat(this.movingPlatforms);
+      this.staticSolids = this.level.solids.map(s => ({ ...s, standTime: 0, hidden: false, cooldown: 0 }));
+      this.solids = this.staticSolids.concat(this.movingPlatforms);
       this.hazards = this.level.hazards.map(h => ({ ...h, active: false, warning: false }));
+      this.vents = this.level.vents.map(v => ({ ...v, active: false, warning: false }));
+      this.boss = { ...this.level.bossConfig, arena: { ...this.level.bossConfig.arena }, health: this.level.bossConfig.maxHealth, active: false, defeated: false, phase: 'waiting', telegraph: false, windup: 0, vulnerable: false, stage: 1, battleTime: 0, attackClock: 0, lastAttack: -1, defeatedAt: null, vanishProgress: 0 };
+      this.projectiles = []; this.bossProjectiles = []; this.fireCooldown = 0; this.projectileId = 0;
       this.p = { x: 100, y: 510, w: 58, h: 80, vx: 0, vy: 0, grounded: true, jumps: 0, dir: 1, supportId: 'solid-0' };
       this.elapsed = 0; this.penalty = 0; this.collected = 0; this.score = 0;
       this.mode = 'playing'; this.deliveryProgress = 0; this.result = null;
@@ -106,6 +178,7 @@
       return this;
     }
     get nearMachine() { return Math.abs(this.p.x + this.p.w / 2 - (this.level.machine.x + this.level.machine.w / 2)) < 170 && this.p.y + this.p.h > 480 && this.p.y < 640; }
+    get bossProgress() { return clamp(1 - this.boss.health / this.boss.maxHealth, 0, 1); }
     drainEvents() { const result = this.events; this.events = []; return result; }
     emit(type, extra) { this.events.push({ type, x: this.p.x + this.p.w / 2, y: this.p.y + this.p.h / 2, ...extra }); }
     updateDynamics(dt) {
@@ -122,6 +195,11 @@
         if (h.kind === 'drone') {
           h.x = h.minX + (h.maxX - h.minX) * (1 - Math.cos(this.time * tau / h.period + h.phase)) / 2;
           h.y = h.baseY; h.active = true; h.warning = false; h.untilSwitch = 0;
+        } else if (h.kind === 'pendulum') {
+          h.angle = Math.sin(this.time * tau / h.period + h.phase) * h.amplitude;
+          h.x = h.anchorX + Math.sin(h.angle) * h.ropeLength - h.w / 2;
+          h.y = h.anchorY + Math.cos(h.angle) * h.ropeLength - h.h / 2;
+          h.active = true; h.warning = false; h.untilSwitch = 0;
         } else {
           h.cycle = (this.time + h.phase) % h.period;
           const openFor = h.period - h.activeDuration;
@@ -130,6 +208,79 @@
           h.untilSwitch = h.active ? h.period - h.cycle : openFor - h.cycle;
         }
       }
+      for (const v of this.vents) {
+        const cycle = (this.time + v.phase) % v.period, openFor = v.period - v.activeDuration;
+        v.active = cycle >= openFor; v.warning = !v.active && cycle >= openFor - v.warningDuration;
+      }
+      for (const s of this.staticSolids) if (s.type === 'crumble') {
+        if (s.hidden) { s.cooldown = Math.max(0, s.cooldown - dt); if (!s.cooldown) { s.hidden = false; s.standTime = 0; } }
+        else if (this.p.grounded && this.p.supportId === s.id) {
+          s.standTime += dt;
+          if (s.standTime >= s.collapseAfter) { s.hidden = true; s.cooldown = s.recoverAfter; this.emit('crumble', { x: s.x + s.w / 2, y: s.y }); }
+        } else s.standTime = Math.max(0, s.standTime - dt);
+      }
+    }
+    fireNow() {
+      if (this.mode !== 'playing' || this.fireCooldown > 0) return false;
+      const p = this.p, b = this.boss, direction = b.active && !b.defeated ? (b.x + b.w / 2 >= p.x + p.w / 2 ? 1 : -1) : p.dir;
+      const x = p.x + p.w / 2 + direction * 35, y = p.y + 34;
+      const dx = b.x + b.w / 2 - x;
+      const aim = b.active && !b.defeated && Math.sign(dx) === direction ? clamp((b.y + b.h * 0.55 - y) / Math.max(80, Math.abs(dx)) * 650, -160, 160) : 0;
+      this.projectiles.push({ id: ++this.projectileId, kind: 'foam', x, y, r: 10, vx: direction * 650, vy: aim, life: 1.7 });
+      this.fireCooldown = 0.28; this.emit('foam', { x, y }); return true;
+    }
+    updateBoss(dt, input) {
+      const b = this.boss, p = this.p;
+      if (!b.active && !b.defeated && p.x + p.w >= b.arena.start) {
+        b.active = true; b.phase = 'intro'; b.battleTime = 0;
+        this.checkpoint = { x: b.arena.checkpointX, y: 510 };
+        this.emit('bossActivated', { text: b.name + ' ortaya çıktı! Döngü Köpüğünü basılı tut.', name: b.name });
+      }
+      if (b.defeated) { b.vanishProgress = clamp((this.time - b.defeatedAt) / 1.1, 0, 1); b.phase = b.vanishProgress < 1 ? 'dissolving' : 'gone'; }
+      else if (b.active) {
+        b.battleTime += dt;
+        b.vulnerable = b.battleTime >= 1;
+        if (b.battleTime < 1) { b.phase = 'intro'; b.telegraph = false; }
+        else {
+          const stage = this.levelIndex >= 4 && b.health <= b.maxHealth / 2 ? 2 : 1;
+          if (stage !== b.stage) { b.stage = stage; b.attackClock = 0; b.lastAttack = -1; this.emit('bossStage', { text: 'Ritim hızlandı! Uyarıyı izle, köpüğe devam et.' }); }
+          const period = b.attackPeriod * (b.stage === 2 ? 0.82 : 1);
+          b.attackClock += dt;
+          const t = b.attackClock, cycle = t % period, attack = Math.floor(t / period);
+          const warningStart = period - 0.95, attackStart = period - 0.15;
+          b.phase = cycle < warningStart ? 'rest' : cycle < attackStart ? 'telegraph' : 'attack';
+          b.telegraph = b.phase === 'telegraph'; b.windup = b.telegraph ? (cycle - warningStart) / 0.8 : 0;
+          if (cycle >= attackStart && b.lastAttack !== attack) {
+            b.lastAttack = attack;
+            if (this.invulnerable <= 0) {
+              const kind = b.variant === 1 || b.variant === 3 ? 'arc' : 'rolling';
+              const speed = b.projectileSpeed * (b.stage === 2 ? 1.12 : 1);
+              const aimDirection = p.x + p.w / 2 < b.x + b.w / 2 ? -1 : 1;
+              const originX = aimDirection < 0 ? b.x - 18 : b.x + b.w + 18;
+              this.bossProjectiles.push({ id: ++this.projectileId, kind, x: originX, y: kind === 'rolling' ? 574 : 500, r: 15 + this.levelIndex * 0.3, vx: aimDirection * speed, vy: kind === 'rolling' ? 0 : -250, gravity: kind === 'rolling' ? 0 : 500, life: 7 });
+              if (b.variant >= 2 || b.stage === 2) this.bossProjectiles.push({ id: ++this.projectileId, kind: 'bubble', x: originX, y: 465, r: 13, vx: aimDirection * speed * 0.8, vy: 10, gravity: 0, life: 7 });
+              this.emit('bossAttack', { kind, text: 'İşareti izle; zıpla ve köpükle döngüyü tamamla!' });
+            }
+          }
+        }
+      }
+      this.fireCooldown = Math.max(0, this.fireCooldown - dt);
+      if (input.fire) this.fireNow();
+      for (const foam of this.projectiles) {
+        foam.x += foam.vx * dt; foam.y += foam.vy * dt; foam.life -= dt;
+        if (b.active && !b.defeated && circleHits(foam, b)) {
+          foam.life = 0;
+          if (!b.vulnerable) continue;
+          b.health = Math.max(0, b.health - 1); this.emit('bossHit', { x: foam.x, y: foam.y, progress: this.bossProgress });
+          if (!b.health) {
+            b.defeated = true; b.defeatedAt = this.time; b.vanishProgress = 0; b.phase = 'dissolving'; b.telegraph = false;
+            this.bossProjectiles = []; this.emit('bossDefeated', { x: b.x + b.w / 2, y: b.y + b.h / 2, text: 'Pırıl pırıl! Çöp bossu geri dönüşüm girdabında dağıldı. +100 puan' });
+          }
+        }
+      }
+      this.projectiles = this.projectiles.filter(p => p.life > 0);
+      for (const ball of this.bossProjectiles) { ball.vy += ball.gravity * dt; ball.x += ball.vx * dt; ball.y += ball.vy * dt; ball.life -= dt; }
+      this.bossProjectiles = this.bossProjectiles.filter(ball => ball.life > 0 && ball.y < 760 && ball.x + ball.r > b.arena.start - 100 && ball.x - ball.r < b.arena.end + 100);
     }
     jumpNow() {
       const p = this.p;
@@ -160,17 +311,19 @@
       this.updateDynamics(dt);
       const carried = p.grounded && this.movingPlatforms.find(s => s.id === p.supportId);
       if (carried) { p.x += carried.dx; p.y += carried.dy; }
+      const belt = p.grounded && this.staticSolids.find(s => s.id === p.supportId && s.type === 'conveyor');
+      if (belt) p.x += belt.beltSpeed * dt;
       this.coyote = p.grounded ? PHYSICS.coyote : Math.max(0, this.coyote - dt);
       this.jumpBuffer = Math.max(0, this.jumpBuffer - dt);
       if (this.jumpBuffer > 0) this.jumpNow();
       const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-      if (direction) { p.vx = clamp(p.vx + direction * PHYSICS.acceleration * dt, -PHYSICS.speed, PHYSICS.speed); p.dir = direction; }
-      else { const loss = PHYSICS.friction * dt; p.vx = Math.sign(p.vx) * Math.max(0, Math.abs(p.vx) - loss); }
+      if (direction) { p.vx = clamp(p.vx + direction * (this.level.acceleration || PHYSICS.acceleration) * dt, -PHYSICS.speed, PHYSICS.speed); p.dir = direction; }
+      else { const loss = (this.level.friction || PHYSICS.friction) * dt; p.vx = Math.sign(p.vx) * Math.max(0, Math.abs(p.vx) - loss); }
       p.x += p.vx * dt;
       p.x = clamp(p.x, 0, this.level.width - p.w);
       for (const s of this.solids) {
         // Raised platforms are one-way. Crates and ground edges are solid.
-        if (s.type === 'platform' || s.type === 'moving' || !overlap(p, s)) continue;
+        if (oneWay(s) || s.hidden || !overlap(p, s)) continue;
         if (p.vx > 0) p.x = s.x - p.w;
         else if (p.vx < 0) p.x = s.x + s.w;
         p.vx = 0;
@@ -181,13 +334,17 @@
       const wasGrounded = p.grounded;
       p.grounded = false; p.supportId = null;
       for (const s of this.solids) {
+        if (s.hidden) continue;
         if (!(p.x + p.w > s.x + 0.001 && p.x < s.x + s.w - 0.001)) continue;
         if (p.vy >= 0 && oldBottom <= s.y + 0.1 && p.y + p.h >= s.y) {
           p.y = s.y - p.h; p.vy = 0; p.grounded = true; p.jumps = 0; p.supportId = s.id; this.coyote = PHYSICS.coyote;
-        } else if (s.type !== 'platform' && s.type !== 'moving' && p.vy < 0 && overlap(p, s)) {
+        } else if (!oneWay(s) && p.vy < 0 && overlap(p, s)) {
           p.y = s.y + s.h; p.vy = 0;
         }
       }
+      const spring = p.grounded && this.staticSolids.find(s => s.id === p.supportId && s.type === 'bounce');
+      if (spring) { p.vy = -spring.power; p.grounded = false; p.supportId = null; p.jumps = 0; this.emit('bounce', { x: p.x + p.w / 2, y: p.y + p.h }); }
+      for (const vent of this.vents) if (vent.active && overlap(p, vent)) { p.vy = Math.min(p.vy, -440); p.grounded = false; p.supportId = null; }
       if (!wasGrounded && p.grounded) this.emit('land');
       if (p.grounded) {
         for (const checkpoint of this.level.checkpoints) {
@@ -206,10 +363,12 @@
           this.emit('collect', { x: pack.x, y: pack.y, kind: pack.type, count: this.collected, id: pack.id });
         }
       }
+      this.updateBoss(dt, input);
       if (p.y > 900) this.respawn('fall');
       else if (this.invulnerable <= 0) {
         const hit = this.hazards.find(h => h.active && overlap(p, h));
         if (hit) this.respawn('hazard', hit.kind);
+        else if (this.boss.active && !this.boss.defeated && (overlap(p, this.boss) || this.bossProjectiles.some(ball => circleHits(ball, p)))) this.respawn('boss', 'boss');
       }
     }
     respawn(reason = 'fall', kind = null) {
@@ -218,13 +377,15 @@
       this.p.vx = 0; this.p.vy = 0; this.p.grounded = true; this.p.jumps = 0;
       this.p.supportId = this.level.solids.find(s => s.type === 'ground' && this.p.x >= s.x && this.p.x + this.p.w < s.x + s.w).id;
       this.invulnerable = 1.3;
-      if (reason === 'hazard') this.hits++;
+      if (reason === 'hazard' || reason === 'boss') this.hits++;
+      if (reason === 'boss') this.bossProjectiles = [];
       this.coyote = PHYSICS.coyote; this.jumpBuffer = 0;
-      this.emit('fall', { penalty: 3, reason, kind, text: reason === 'hazard' ? (kind === 'barrier' ? 'Işığın ritmini izle, yeniden deneyebilirsin! +3 sn' : 'Temizlik robotuna yol ver, yeniden deneyebilirsin! +3 sn') : 'Yeniden dene, başarabilirsin! +3 sn' });
+      this.emit('fall', { penalty: 3, reason, kind, text: reason === 'boss' ? 'Köpüğün gücü sende! Temizlik ilerlemen korundu. +3 sn' : reason === 'hazard' ? (kind === 'barrier' ? 'Işığın ritmini izle, yeniden deneyebilirsin! +3 sn' : 'Temizlik robotuna yol ver, yeniden deneyebilirsin! +3 sn') : 'Yeniden dene, başarabilirsin! +3 sn' });
     }
     deliver() {
       if (this.mode !== 'playing' || !this.nearMachine) return false;
       if (this.collected < 8) { this.emit('needMore', { text: 'Biraz daha keşfet! En az 8 ambalaj gerekiyor.' }); return false; }
+      if (!this.boss.defeated) { this.emit('bossRequired', { text: 'Önce çöp bossunu Döngü Köpüğüyle dağıt. F / Köpük düğmesini basılı tut!' }); return false; }
       this.mode = 'delivering'; this.deliveryProgress = 0; this.p.vx = 0; this.p.vy = 0;
       this.emit('delivery', { count: this.collected }); return true;
     }
@@ -234,7 +395,8 @@
       const base = count * 10;
       const timeBonus = Math.max(0, Math.floor(this.level.targetTime - this.elapsed)) * 5;
       const perfectBonus = count === 12 ? 100 : 0;
-      this.result = { count, stars, base, timeBonus, perfectBonus, total: base + timeBonus + perfectBonus, time: this.elapsed, badge: count === 12, mistakes: this.falls, hits: this.hits };
+      const bossBonus = this.boss.defeated ? 100 : 0;
+      this.result = { count, stars, base, timeBonus, perfectBonus, bossBonus, total: base + timeBonus + perfectBonus + bossBonus, time: this.elapsed, badge: count === 12, mistakes: this.falls, hits: this.hits };
       this.mode = 'complete'; this.deliveryProgress = 1;
       this.emit('complete', { result: this.result });
     }

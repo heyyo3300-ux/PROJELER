@@ -1,0 +1,22 @@
+DOA DÖNGÜ KOŞUSU — ANDROID
+
+Ücretsiz kurulum (APK indirmeden):
+1. Android telefonunda Chrome ile https://heyyo3300-ux.github.io/PROJELER/ adresini aç.
+2. Menüden “Uygulamayı yükle” veya “Ana ekrana ekle” seçeneğini kullan.
+3. Oyun simgesini aç. İlk açılışta dosyaların indirilmesini bekle; sonra oyun
+   çevrimdışı da açılabilir. Önceden açılmamış yeni sürüm için İnternet gerekir.
+
+Telefonu yatay kullanmak daha geniş bir parkur görünümü sağlar. Sol ve sağ
+düğmelerini basılı tutarken ayrı zıplama düğmesine dokunabilirsin.
+
+APK seçeneği:
+android/ klasöründe oyunu telefona ayrı uygulama olarak paketleyen proje ve
+GitHub Actions derleme iş akışı bulunur. Bu bilgisayarda Android SDK/JDK/Gradle
+kurulu değil; burada derlenmiş APK üretilmedi. Yalnızca başarıyla tamamlanan
+Android APK iş akışının çıktısı gerçek kurulabilir APK'dır. Google Play hesabı,
+ücretli servis veya mağaza yayını gerektirmez.
+
+Tarayıcı uygulaması ve APK'nın kişisel kayıtları birbirinden ayrıdır.
+Çocuklardan bilgi, hesap veya ödeme istenmez. Tüm ödüller oyun içidir.
+
+PWA bilgisi: https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable
