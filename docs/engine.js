@@ -5,7 +5,7 @@
   if (root) root.RVMEngine = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  const PHYSICS = Object.freeze({ speed: 285, acceleration: 2200, friction: 2400, jump: 600, gravity: 1500, maxFall: 950, coyote: 0.12, buffer: 0.13 });
+  const PHYSICS = Object.freeze({ speed: 285, acceleration: 2200, friction: 2400, jump: 600, gravity: 1500, maxFall: 950, coyote: 0.12, buffer: 0.13, dashSpeed: 720, dashDuration: 0.2, dashCooldown: 1.1 });
   const ground = (x, w) => ({ x, y: 590, w, h: 200, type: 'ground' });
   const platform = (x, y, w) => ({ x, y, w, h: 24, type: 'platform' });
   const crate = (x, h = 60, w = 66) => ({ x, y: 590 - h, w, h, type: 'crate' });
@@ -135,9 +135,22 @@
     level.solids.push(ground(courseEnd, 900));
     level.checkpoints.push({ x: courseEnd + 70, y: 510 });
     level.machine = { x: level.width - 190, y: 448, w: 110, h: 142 };
-    level.bossConfig = { name: bossNames[index], x: level.width - 510, y: 434, w: 132, h: 156, maxHealth: 20 + index * 3, attackPeriod: Math.max(2.35, 3.6 - index * 0.12), projectileSpeed: 145 + index * 6, variant: index % 4, arena: { start: courseEnd + 20, end: level.width, checkpointX: courseEnd + 70 } };
+    level.bossConfig = { name: bossNames[index], x: level.width - 510, y: 410, w: 150, h: 180, maxHealth: 12 + Math.floor(index / 2) * 2, attackPeriod: 5.9, projectileSpeed: 165 + index * 7, variant: index % 3, arena: { start: courseEnd + 20, end: level.width, checkpointX: courseEnd + 70 } };
     level.solids.forEach((s, i) => { s.id = 'solid-' + i; });
-    level.signs.push({ x: courseEnd - 180, text: 'Çöp bossunu Döngü Köpüğüyle dağıt! F / Köpük düğmesini basılı tut.' });
+    level.signs.push({ x: courseEnd - 180, text: 'Çöp Adam: işareti izle, Shift ile atıl; çekirdek açılınca köpük gönder!' });
+    level.enemies = [];
+    let nextSpawn = 760;
+    for (const floor of level.solids.filter(s => s.type === 'ground' && s.x < courseEnd)) {
+      for (let x = Math.max(nextSpawn, floor.x + 190); x < floor.x + floor.w - 115; x += 140) {
+        if (x < nextSpawn || level.checkpoints.some(cp => Math.abs(cp.x - x) < 190)) continue;
+        if (level.solids.some(s => s.type === 'crate' && x + 110 > s.x && x - 110 < s.x + s.w)) continue;
+        if (level.hazards.some(h => Math.abs((h.kind === 'drone' ? (h.minX + h.maxX) / 2 : h.kind === 'pendulum' ? h.anchorX : h.x) - x) < 220)) continue;
+        const n = level.enemies.length, kind = index < 2 ? 'walker' : ['walker', 'hopper', 'shooter'][(n + index) % (index < 4 ? 2 : 3)];
+        level.enemies.push({ id: 'minion-' + n, kind, x, y: 536, w: 46, h: 54, minX: Math.max(floor.x + 65, x - 85), maxX: Math.min(floor.x + floor.w - 110, x + 85), floorY: 590, maxHp: kind === 'shooter' ? 3 : 2 });
+        nextSpawn = x + (index ? 820 : 1000);
+      }
+    }
+    level.tip += ' Shift / ATIL ile sıyrıl; çöp adamın saldırısından kaçınca açılan çekirdeğe köpük gönder.';
   });
   LEVELS[0].solids.push({ id: 'park-spring', type: 'bounce', x: 390, y: 590, w: 78, h: 14, power: 690 });
   LEVELS[0].mechanic = 'Çift zıplama ve esnek zemin';
@@ -151,6 +164,7 @@
   LEVELS[4].mechanic = 'Sallanan ambalaj topu';
   LEVELS[5].hazards.push(pendulum('energy-swing', LEVELS[5].courseWidth - 550, 3.8));
   LEVELS[5].mechanic = 'Kapı, köprü ve sarkaç';
+  LEVELS.forEach(level => { level.enemies = level.enemies.filter(e => !level.hazards.some(h => h.kind === 'pendulum' && Math.abs(e.x - h.anchorX) < 260)); });
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   const oneWay = s => ['platform', 'moving', 'bounce', 'conveyor', 'crumble'].includes(s.type);
@@ -166,19 +180,25 @@
       this.solids = this.staticSolids.concat(this.movingPlatforms);
       this.hazards = this.level.hazards.map(h => ({ ...h, active: false, warning: false }));
       this.vents = this.level.vents.map(v => ({ ...v, active: false, warning: false }));
-      this.boss = { ...this.level.bossConfig, arena: { ...this.level.bossConfig.arena }, health: this.level.bossConfig.maxHealth, active: false, defeated: false, phase: 'waiting', telegraph: false, windup: 0, vulnerable: false, stage: 1, battleTime: 0, attackClock: 0, lastAttack: -1, defeatedAt: null, vanishProgress: 0 };
-      this.projectiles = []; this.bossProjectiles = []; this.fireCooldown = 0; this.projectileId = 0;
-      this.p = { x: 100, y: 510, w: 58, h: 80, vx: 0, vy: 0, grounded: true, jumps: 0, dir: 1, supportId: 'solid-0' };
+      this.boss = { ...this.level.bossConfig, arena: { ...this.level.bossConfig.arena }, health: this.level.bossConfig.maxHealth, active: false, defeated: false, phase: 'waiting', phaseTime: 0, telegraph: false, windup: 0, vulnerable: false, openedByDodge: false, stage: 1, battleTime: 0, attackClock: 0, cycles: 0, cycleDamage: 0, attack: 'charge', vx: 0, vy: 0, dir: -1, markers: [], defeatedAt: null, vanishProgress: 0 };
+      this.enemies = this.level.enemies.map(e => ({ ...e, hp: e.maxHp, active: false, warning: false, wakeTime: 0, vx: 0, vy: 0, dir: 1, hitFlash: 0, defeated: false, defeatedAt: null, cooldown: 1.5 }));
+      this.projectiles = []; this.bossProjectiles = []; this.enemyProjectiles = []; this.shockwaves = []; this.fireCooldown = 0; this.projectileId = 0;
+      this.p = { x: 100, y: 510, w: 58, h: 80, vx: 0, vy: 0, grounded: true, jumps: 0, dir: 1, supportId: 'solid-0', energy: 3, maxEnergy: 3, dashTimer: 0, dashCooldown: 0, dashDir: 1, stunTimer: 0 };
       this.elapsed = 0; this.penalty = 0; this.collected = 0; this.score = 0;
       this.mode = 'playing'; this.deliveryProgress = 0; this.result = null;
       this.checkpoint = { ...this.level.checkpoints[0] };
       this.events = []; this.coyote = PHYSICS.coyote; this.jumpBuffer = 0;
-      this.time = 0; this.falls = 0; this.hits = 0; this.invulnerable = 0;
+      this.time = 0; this.falls = 0; this.hits = 0; this.invulnerable = 0; this.practice = false;
+      this.actionBonus = 0; this.combo = 0; this.bestCombo = 0; this.comboTimer = 0; this.enemiesDefeated = 0; this.counters = 0;
+      this.damageSerial = 0; this.lastJumpTime = -100; this.lastDashTime = -100; this.dashQueued = false; this.shieldFeedback = 0;
       this.updateDynamics(0);
       return this;
     }
     get nearMachine() { return Math.abs(this.p.x + this.p.w / 2 - (this.level.machine.x + this.level.machine.w / 2)) < 170 && this.p.y + this.p.h > 480 && this.p.y < 640; }
     get bossProgress() { return clamp(1 - this.boss.health / this.boss.maxHealth, 0, 1); }
+    get energy() { return this.p.energy; }
+    get maxEnergy() { return this.p.maxEnergy; }
+    startPractice() { this.practice = true; this.p.x = this.boss.arena.checkpointX; this.p.y = 510; this.p.vx = 0; this.p.vy = 0; this.checkpoint = { x: this.p.x, y: 510 }; this.p.supportId = this.solids.find(s => s.type === 'ground' && this.p.x >= s.x && this.p.x < s.x + s.w).id; return this; }
     drainEvents() { const result = this.events; this.events = []; return result; }
     emit(type, extra) { this.events.push({ type, x: this.p.x + this.p.w / 2, y: this.p.y + this.p.h / 2, ...extra }); }
     updateDynamics(dt) {
@@ -222,71 +242,189 @@
     }
     fireNow() {
       if (this.mode !== 'playing' || this.fireCooldown > 0) return false;
-      const p = this.p, b = this.boss, direction = b.active && !b.defeated ? (b.x + b.w / 2 >= p.x + p.w / 2 ? 1 : -1) : p.dir;
+      const p = this.p, b = this.boss;
+      const target = b.active && !b.defeated ? b : this.enemies.filter(e => e.active && !e.defeated && Math.abs(e.x - p.x) < 570).sort((a, z) => Math.abs(a.x - p.x) - Math.abs(z.x - p.x))[0];
+      const direction = target ? (target.x + target.w / 2 >= p.x + p.w / 2 ? 1 : -1) : p.dir;
       const x = p.x + p.w / 2 + direction * 35, y = p.y + 34;
-      const dx = b.x + b.w / 2 - x;
-      const aim = b.active && !b.defeated && Math.sign(dx) === direction ? clamp((b.y + b.h * 0.55 - y) / Math.max(80, Math.abs(dx)) * 650, -160, 160) : 0;
+      const dx = target ? target.x + target.w / 2 - x : 0;
+      const aim = target && Math.sign(dx) === direction ? clamp((target.y + target.h * 0.55 - y) / Math.max(80, Math.abs(dx)) * 650, -190, 190) : 0;
       this.projectiles.push({ id: ++this.projectileId, kind: 'foam', x, y, r: 10, vx: direction * 650, vy: aim, life: 1.7 });
       this.fireCooldown = 0.28; this.emit('foam', { x, y }); return true;
+    }
+    awardAction(points) { this.actionBonus += points; this.score = this.collected * 10 + this.actionBonus; }
+    dashNow(direction = this.p.dir) {
+      const p = this.p;
+      if (this.mode !== 'playing' || p.dashCooldown > 0 || p.stunTimer > 0) return false;
+      p.dashDir = direction < 0 ? -1 : 1; p.dir = p.dashDir; p.dashTimer = PHYSICS.dashDuration; p.dashCooldown = PHYSICS.dashCooldown;
+      p.vx = p.dashDir * PHYSICS.dashSpeed; p.vy = Math.min(0, p.vy); p.dashHitBoss = false;
+      this.lastDashTime = this.time; this.emit('dash'); return true;
+    }
+    takeDamage(source = 'enemy', kind = source, hitX = this.p.x + 80) {
+      const p = this.p;
+      if (this.invulnerable > 0 || p.dashTimer > 0) return false;
+      p.energy--; this.hits++; this.damageSerial++; this.combo = 0; this.comboTimer = 0;
+      p.stunTimer = 0.18; p.vx = p.x + p.w / 2 < hitX ? -310 : 310; p.vy = -260; p.grounded = false; p.supportId = null;
+      this.invulnerable = 1;
+      this.emit('damage', { source, kind, energy: Math.max(0, p.energy), maxEnergy: p.maxEnergy });
+      if (p.energy <= 0) this.respawn(source, kind);
+      return true;
+    }
+    damageEnemy(e, amount = 1, how = 'foam') {
+      if (e.defeated) return;
+      e.hp = Math.max(0, e.hp - amount); e.hitFlash = 0.13; this.emit('enemyHit', { x: e.x + e.w / 2, y: e.y + e.h / 2, kind: e.kind });
+      if (!e.hp) {
+        e.defeated = true; e.defeatedAt = this.time; e.active = false; this.enemiesDefeated++;
+        this.combo = this.comboTimer > 0 ? this.combo + 1 : 1; this.comboTimer = 4; this.bestCombo = Math.max(this.bestCombo, this.combo);
+        const bonus = how === 'stomp' ? 40 : 20; this.awardAction(bonus);
+        this.emit('enemyDefeated', { x: e.x + e.w / 2, y: e.y + e.h / 2, kind: e.kind, bonus, combo: this.combo, how });
+      }
+    }
+    updateMinions(dt) {
+      const p = this.p;
+      const awake = this.boss.active && p.x >= this.boss.arena.start - 100 ? [] : this.enemies.filter(e => !e.defeated && Math.abs(e.x - p.x) < 720).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x)).slice(0, 3);
+      for (const e of this.enemies) {
+        e.hitFlash = Math.max(0, e.hitFlash - dt);
+        e.active = awake.includes(e);
+        if (!e.active) continue;
+        e.wakeTime += dt; e.warning = e.wakeTime < 0.7;
+        if (e.warning) { e.vx = 0; continue; }
+        e.vx = e.dir * (e.kind === 'hopper' ? 78 : e.kind === 'shooter' ? 35 : 64);
+        e.x += e.vx * dt;
+        if (e.x <= e.minX) { e.x = e.minX; e.dir = 1; }
+        if (e.x >= e.maxX) { e.x = e.maxX; e.dir = -1; }
+        e.cooldown -= dt;
+        if (e.kind === 'hopper') {
+          if (e.y + e.h >= e.floorY && e.cooldown <= 0) { e.vy = -390; e.cooldown = 1.9; }
+          e.vy += 1250 * dt; e.y += e.vy * dt;
+          if (e.y + e.h >= e.floorY) { e.y = e.floorY - e.h; e.vy = 0; }
+        } else if (e.kind === 'shooter') {
+          e.warning = e.cooldown > 0 && e.cooldown < 0.5;
+          if (e.cooldown <= 0) {
+            const dir = p.x < e.x ? -1 : 1;
+            this.enemyProjectiles.push({ id: ++this.projectileId, kind: 'minion-bubble', x: e.x + e.w / 2 + dir * 30, y: e.y + 22, r: 11, vx: dir * 180, vy: 0, gravity: 0, life: 4 });
+            e.cooldown = 2.4;
+          }
+        }
+      }
+    }
+    bossPhase(phase) {
+      const b = this.boss;
+      b.phase = phase; b.phaseTime = 0; b.telegraph = phase === 'telegraph'; b.windup = 0; b.vulnerable = false;
+      if (phase === 'approach') { b.markers = []; b.openedByDodge = false; b.cycleDamage = 0; b.vx = 0; }
+      if (phase === 'telegraph') {
+        b.attack = ['charge', 'slam', 'fan'][(b.cycles + b.variant) % 3];
+        b.targetX = clamp(this.p.x + this.p.w / 2, b.arena.start + 50, b.arena.end - 50);
+        b.dir = b.targetX >= b.x + b.w / 2 ? 1 : -1; b.vx = 0;
+        b.markers = [{ kind: b.attack, x: b.attack === 'slam' ? b.targetX - 100 : Math.min(b.x + b.w / 2, b.targetX), y: 570, w: b.attack === 'slam' ? 200 : Math.max(100, Math.abs(b.targetX - b.x - b.w / 2)), h: 20 }];
+        this.emit('bossWarning', { attack: b.attack, targetX: b.targetX, text: b.attack === 'charge' ? 'Üstüne koşacak! Zıpla ya da ATIL ile karşıla.' : b.attack === 'slam' ? 'Yere iniyor! İşaretten uzaklaş, dalganın üstünden atla.' : 'Topları geri yolla! Doğru anda ATIL.' });
+      }
+      if (phase === 'attack') {
+        b.cycles++; b.damageAtAttack = this.damageSerial; b.playerAttackX = this.p.x; b.attackStarted = this.time; b.attackClock = 0;
+        b.startX = b.x; b.endX = clamp(b.targetX - b.w / 2 + b.dir * (b.attack === 'charge' ? 100 : 0), b.arena.start + 35, b.arena.end - b.w - 35);
+        b.landed = false; b.fired = false;
+        if (b.attack === 'slam') { b.vy = -720; b.vx = (b.endX - b.x) / 0.95; }
+        this.emit('bossAttack', { kind: b.attack, attack: b.attack });
+      }
+    }
+    recoverBoss(counter = false) {
+      const b = this.boss;
+      b.openedByDodge = counter || (this.damageSerial === b.damageAtAttack && (Math.abs(this.p.x - b.playerAttackX) >= 65 || this.lastJumpTime >= b.attackStarted - 0.4 || this.lastDashTime >= b.attackStarted - 0.4));
+      this.bossPhase('recovery'); b.vx = 0; b.vy = 0; b.y = 410; b.vulnerable = b.openedByDodge;
+      this.emit('bossRecovery', { opened: b.openedByDodge, text: b.openedByDodge ? 'ŞİMDİ! Çekirdeğe köpük gönder!' : 'Saldırıdan kaç ya da ATIL ile karşıla; çekirdeği aç!' });
+    }
+    hitBoss(amount = 1) {
+      const b = this.boss;
+      if (!b.vulnerable || b.phase !== 'recovery' || b.cycleDamage >= 4) return false;
+      const damage = Math.min(amount, 4 - b.cycleDamage, b.health);
+      b.health -= damage; b.cycleDamage += damage;
+      this.emit('bossHit', { x: b.x + b.w / 2, y: b.y + b.h / 2, progress: this.bossProgress, damage });
+      if (b.cycleDamage >= 4) b.vulnerable = false;
+      if (!b.health) {
+        b.defeated = true; b.defeatedAt = this.time; b.vanishProgress = 0; b.phase = 'dissolving'; b.telegraph = false; b.vx = 0; b.vy = 0;
+        this.bossProjectiles = []; this.shockwaves = [];
+        this.emit('bossDefeated', { x: b.x + b.w / 2, y: b.y + b.h / 2, text: 'Çöp Adam döngü girdabında dağıldı! +100 puan' });
+      }
+      return true;
+    }
+    parry(ball) {
+      ball.life = 0; this.counters++; this.awardAction(30); this.emit('parry', { x: ball.x, y: ball.y, bonus: 30 });
+      const b = this.boss;
+      if (b.active && !b.defeated) { this.recoverBoss(true); this.bossProjectiles = []; this.shockwaves = []; }
+      const target = b.active && !b.defeated ? b : this.enemies.find(e => e.active && !e.defeated);
+      const dir = target && target.x < this.p.x ? -1 : 1;
+      this.projectiles.push({ id: ++this.projectileId, kind: 'power-foam', x: this.p.x + this.p.w / 2, y: this.p.y + 34, r: 17, vx: dir * 800, vy: target ? clamp((target.y + target.h / 2 - this.p.y - 34) * 2, -220, 220) : 0, life: 1.5 });
     }
     updateBoss(dt, input) {
       const b = this.boss, p = this.p;
       if (!b.active && !b.defeated && p.x + p.w >= b.arena.start) {
-        b.active = true; b.phase = 'intro'; b.battleTime = 0;
-        this.checkpoint = { x: b.arena.checkpointX, y: 510 };
-        this.emit('bossActivated', { text: b.name + ' ortaya çıktı! Döngü Köpüğünü basılı tut.', name: b.name });
+        b.active = true; this.bossPhase('intro'); this.checkpoint = { x: b.arena.checkpointX, y: 510 };
+        p.energy = p.maxEnergy; this.enemyProjectiles = []; this.invulnerable = Math.max(this.invulnerable, 0.5);
+        this.emit('bossActivated', { name: b.name, text: 'Çöp Adam geliyor! Saldırıdan kaç; çekirdek açılınca köpük gönder.' });
       }
       if (b.defeated) { b.vanishProgress = clamp((this.time - b.defeatedAt) / 1.1, 0, 1); b.phase = b.vanishProgress < 1 ? 'dissolving' : 'gone'; }
       else if (b.active) {
-        b.battleTime += dt;
-        b.vulnerable = b.battleTime >= 1;
-        if (b.battleTime < 1) { b.phase = 'intro'; b.telegraph = false; }
-        else {
-          const stage = this.levelIndex >= 4 && b.health <= b.maxHealth / 2 ? 2 : 1;
-          if (stage !== b.stage) { b.stage = stage; b.attackClock = 0; b.lastAttack = -1; this.emit('bossStage', { text: 'Ritim hızlandı! Uyarıyı izle, köpüğe devam et.' }); }
-          const period = b.attackPeriod * (b.stage === 2 ? 0.82 : 1);
+        b.battleTime += dt; b.phaseTime += dt;
+        b.stage = this.levelIndex >= 4 && b.health <= b.maxHealth / 2 ? 2 : 1;
+        if (b.phase === 'intro' && b.phaseTime >= 0.9) this.bossPhase('approach');
+        else if (b.phase === 'approach') {
+          const distance = p.x + p.w / 2 - b.x - b.w / 2;
+          b.dir = distance < 0 ? -1 : 1;
+          b.vx = Math.abs(distance) > 270 ? b.dir * (100 + this.levelIndex * 3) : Math.abs(distance) < 175 ? -b.dir * 100 : Math.sin(b.phaseTime * 4 + b.variant) * 65;
+          b.x = clamp(b.x + b.vx * dt, b.arena.start + 35, b.arena.end - b.w - 35);
+          if (b.phaseTime >= (b.stage === 2 ? 2.05 : 2.4)) this.bossPhase('telegraph');
+        } else if (b.phase === 'telegraph') {
+          b.windup = clamp(b.phaseTime / 0.9, 0, 1);
+          if (b.phaseTime >= 0.9) this.bossPhase('attack');
+        } else if (b.phase === 'attack') {
           b.attackClock += dt;
-          const t = b.attackClock, cycle = t % period, attack = Math.floor(t / period);
-          const warningStart = period - 0.95, attackStart = period - 0.15;
-          b.phase = cycle < warningStart ? 'rest' : cycle < attackStart ? 'telegraph' : 'attack';
-          b.telegraph = b.phase === 'telegraph'; b.windup = b.telegraph ? (cycle - warningStart) / 0.8 : 0;
-          if (cycle >= attackStart && b.lastAttack !== attack) {
-            b.lastAttack = attack;
-            if (this.invulnerable <= 0) {
-              const kind = b.variant === 1 || b.variant === 3 ? 'arc' : 'rolling';
-              const speed = b.projectileSpeed * (b.stage === 2 ? 1.12 : 1);
-              const aimDirection = p.x + p.w / 2 < b.x + b.w / 2 ? -1 : 1;
-              const originX = aimDirection < 0 ? b.x - 18 : b.x + b.w + 18;
-              this.bossProjectiles.push({ id: ++this.projectileId, kind, x: originX, y: kind === 'rolling' ? 574 : 500, r: 15 + this.levelIndex * 0.3, vx: aimDirection * speed, vy: kind === 'rolling' ? 0 : -250, gravity: kind === 'rolling' ? 0 : 500, life: 7 });
-              if (b.variant >= 2 || b.stage === 2) this.bossProjectiles.push({ id: ++this.projectileId, kind: 'bubble', x: originX, y: 465, r: 13, vx: aimDirection * speed * 0.8, vy: 10, gravity: 0, life: 7 });
-              this.emit('bossAttack', { kind, text: 'İşareti izle; zıpla ve köpükle döngüyü tamamla!' });
+          if (b.attack === 'charge') {
+            const t = clamp(b.phaseTime / 0.72, 0, 1), previous = b.x;
+            b.x = b.startX + (b.endX - b.startX) * t; b.vx = (b.x - previous) / dt;
+            if (b.phaseTime >= 1) this.recoverBoss();
+          } else if (b.attack === 'slam') {
+            if (!b.landed) {
+              b.x = clamp(b.x + b.vx * dt, b.arena.start + 35, b.arena.end - b.w - 35); b.vy += 1500 * dt; b.y += b.vy * dt;
+              if (b.y >= 410 && b.vy > 0) {
+                b.y = 410; b.vy = 0; b.vx = 0; b.landed = true;
+                for (const dir of [-1, 1]) this.shockwaves.push({ id: ++this.projectileId, x: b.x + b.w / 2 - 40, y: 567, w: 80, h: 23, vx: dir * (230 + this.levelIndex * 5), life: 2.4 });
+                this.emit('bossLand', { x: b.x + b.w / 2, y: 590, radius: 110 });
+              }
             }
+            if (b.phaseTime >= 1.22 && b.landed) this.recoverBoss();
+          } else {
+            if (!b.fired && b.phaseTime >= 0.08) {
+              b.fired = true;
+              const dir = b.targetX < b.x + b.w / 2 ? -1 : 1;
+              for (let n = 0; n < (b.stage === 2 ? 4 : 3); n++) this.bossProjectiles.push({ id: ++this.projectileId, kind: 'bubble', x: b.x + b.w / 2 + dir * 95, y: 510 - n * 31, r: 14, vx: dir * (185 + n * 18 + this.levelIndex * 4), vy: n === 0 ? 40 : -15 * n, gravity: 0, life: 4 });
+            }
+            if (b.phaseTime >= 1.2) this.recoverBoss();
           }
-        }
+        } else if (b.phase === 'recovery' && b.phaseTime >= (b.openedByDodge ? 1.85 : 1.1)) this.bossPhase('approach');
       }
-      this.fireCooldown = Math.max(0, this.fireCooldown - dt);
+      this.fireCooldown = Math.max(0, this.fireCooldown - dt); this.shieldFeedback = Math.max(0, this.shieldFeedback - dt);
       if (input.fire) this.fireNow();
       for (const foam of this.projectiles) {
         foam.x += foam.vx * dt; foam.y += foam.vy * dt; foam.life -= dt;
+        const enemy = this.enemies.find(e => e.active && !e.defeated && circleHits(foam, e));
+        if (enemy) { foam.life = 0; this.damageEnemy(enemy, foam.kind === 'power-foam' ? 3 : 1); continue; }
         if (b.active && !b.defeated && circleHits(foam, b)) {
           foam.life = 0;
-          if (!b.vulnerable) continue;
-          b.health = Math.max(0, b.health - 1); this.emit('bossHit', { x: foam.x, y: foam.y, progress: this.bossProgress });
-          if (!b.health) {
-            b.defeated = true; b.defeatedAt = this.time; b.vanishProgress = 0; b.phase = 'dissolving'; b.telegraph = false;
-            this.bossProjectiles = []; this.emit('bossDefeated', { x: b.x + b.w / 2, y: b.y + b.h / 2, text: 'Pırıl pırıl! Çöp bossu geri dönüşüm girdabında dağıldı. +100 puan' });
-          }
+          if (!this.hitBoss(foam.kind === 'power-foam' ? 2 : 1) && this.shieldFeedback <= 0) { this.shieldFeedback = 0.6; this.emit('bossShield', { text: 'Önce kaç veya ATIL ile karşıla; sonra köpük!' }); }
         }
       }
-      this.projectiles = this.projectiles.filter(p => p.life > 0);
-      for (const ball of this.bossProjectiles) { ball.vy += ball.gravity * dt; ball.x += ball.vx * dt; ball.y += ball.vy * dt; ball.life -= dt; }
-      this.bossProjectiles = this.bossProjectiles.filter(ball => ball.life > 0 && ball.y < 760 && ball.x + ball.r > b.arena.start - 100 && ball.x - ball.r < b.arena.end + 100);
+      this.projectiles = this.projectiles.filter(s => s.life > 0);
+      for (const ball of this.bossProjectiles.concat(this.enemyProjectiles)) { ball.vy += (ball.gravity || 0) * dt; ball.x += ball.vx * dt; ball.y += ball.vy * dt; ball.life -= dt; }
+      this.bossProjectiles = this.bossProjectiles.filter(ball => ball.life > 0 && ball.y < 760);
+      this.enemyProjectiles = this.enemyProjectiles.filter(ball => ball.life > 0 && Math.abs(ball.x - p.x) < 900);
+      for (const wave of this.shockwaves) { wave.x += wave.vx * dt; wave.life -= dt; }
+      this.shockwaves = this.shockwaves.filter(w => w.life > 0 && w.x > b.arena.start - 150 && w.x < b.arena.end + 100);
     }
     jumpNow() {
       const p = this.p;
       if (p.grounded || this.coyote > 0) p.jumps = 0;
       if (p.jumps >= 2) return false;
       p.jumps += 1; p.vy = -PHYSICS.jump; p.grounded = false; p.supportId = null; this.coyote = 0; this.jumpBuffer = 0;
+      this.lastJumpTime = this.time;
       this.emit('jump', { double: p.jumps === 2 }); return true;
     }
     step(seconds, input = {}) {
@@ -300,6 +438,7 @@
         return;
       }
       if (input.jump) this.jumpBuffer = PHYSICS.buffer;
+      if (input.dash) this.dashQueued = true;
       // Small fixed substeps prevent tunnelling even on a slow browser frame.
       const slices = Math.ceil(dt / (1 / 120));
       for (let i = 0; i < slices; i++) this.tick(dt / slices, input);
@@ -308,6 +447,9 @@
       this.elapsed += dt; this.time += dt;
       const p = this.p;
       this.invulnerable = Math.max(0, this.invulnerable - dt);
+      p.dashTimer = Math.max(0, p.dashTimer - dt); p.dashCooldown = Math.max(0, p.dashCooldown - dt); p.stunTimer = Math.max(0, p.stunTimer - dt);
+      this.comboTimer = Math.max(0, this.comboTimer - dt); if (!this.comboTimer) this.combo = 0;
+      if (this.dashQueued) { this.dashQueued = false; this.dashNow(input.left ? -1 : input.right ? 1 : p.dir); }
       this.updateDynamics(dt);
       const carried = p.grounded && this.movingPlatforms.find(s => s.id === p.supportId);
       if (carried) { p.x += carried.dx; p.y += carried.dy; }
@@ -315,10 +457,13 @@
       if (belt) p.x += belt.beltSpeed * dt;
       this.coyote = p.grounded ? PHYSICS.coyote : Math.max(0, this.coyote - dt);
       this.jumpBuffer = Math.max(0, this.jumpBuffer - dt);
-      if (this.jumpBuffer > 0) this.jumpNow();
+      if (this.jumpBuffer > 0 && p.stunTimer <= 0) this.jumpNow();
       const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-      if (direction) { p.vx = clamp(p.vx + direction * (this.level.acceleration || PHYSICS.acceleration) * dt, -PHYSICS.speed, PHYSICS.speed); p.dir = direction; }
-      else { const loss = (this.level.friction || PHYSICS.friction) * dt; p.vx = Math.sign(p.vx) * Math.max(0, Math.abs(p.vx) - loss); }
+      if (p.dashTimer > 0) p.vx = p.dashDir * PHYSICS.dashSpeed;
+      else if (p.stunTimer <= 0) {
+        if (direction) { p.vx = clamp(p.vx + direction * (this.level.acceleration || PHYSICS.acceleration) * dt, -PHYSICS.speed, PHYSICS.speed); p.dir = direction; }
+        else { const loss = (this.level.friction || PHYSICS.friction) * dt; p.vx = Math.sign(p.vx) * Math.max(0, Math.abs(p.vx) - loss); }
+      }
       p.x += p.vx * dt;
       p.x = clamp(p.x, 0, this.level.width - p.w);
       for (const s of this.solids) {
@@ -329,7 +474,7 @@
         p.vx = 0;
       }
       const oldBottom = p.y + p.h;
-      p.vy = Math.min(PHYSICS.maxFall, p.vy + PHYSICS.gravity * dt);
+      p.vy = Math.min(PHYSICS.maxFall, p.vy + PHYSICS.gravity * (p.dashTimer > 0 ? 0.15 : 1) * dt);
       p.y += p.vy * dt;
       const wasGrounded = p.grounded;
       p.grounded = false; p.supportId = null;
@@ -350,6 +495,7 @@
         for (const checkpoint of this.level.checkpoints) {
           if (checkpoint.x > this.checkpoint.x && p.x >= checkpoint.x && p.y >= 500 && p.x - checkpoint.x < 170) {
             this.checkpoint = { ...checkpoint };
+            p.energy = p.maxEnergy;
             this.emit('checkpoint', { x: checkpoint.x, y: checkpoint.y, text: 'Güvenli nokta kaydedildi!' });
           }
         }
@@ -359,33 +505,52 @@
         const nearestX = clamp(pack.x, p.x, p.x + p.w);
         const nearestY = clamp(pack.y, p.y, p.y + p.h);
         if ((pack.x - nearestX) ** 2 + (pack.y - nearestY) ** 2 <= 24 ** 2) {
-          pack.collected = true; this.collected++; this.score = this.collected * 10;
+          pack.collected = true; this.collected++; this.score = this.collected * 10 + this.actionBonus;
           this.emit('collect', { x: pack.x, y: pack.y, kind: pack.type, count: this.collected, id: pack.id });
         }
       }
-      this.updateBoss(dt, input);
+      this.updateMinions(dt); this.updateBoss(dt, input);
+      for (const e of this.enemies) if (e.active && !e.defeated && !e.warning && overlap(p, e)) {
+        if (p.vy > 0 && oldBottom <= e.y + 18) { this.damageEnemy(e, 3, 'stomp'); p.vy = -450; p.grounded = false; p.jumps = 0; }
+        else if (p.dashTimer > 0) this.damageEnemy(e, 3, 'dash');
+        else this.takeDamage('enemy', e.kind, e.x + e.w / 2);
+      }
+      for (const ball of this.bossProjectiles.concat(this.enemyProjectiles)) if (ball.life > 0 && circleHits(ball, p)) {
+        if (p.dashTimer > 0) this.parry(ball);
+        else this.takeDamage(ball.kind === 'minion-bubble' ? 'enemy' : 'boss', ball.kind, ball.x);
+      }
+      for (const wave of this.shockwaves) if (wave.life > 0 && overlap(p, wave)) {
+        if (p.dashTimer > 0) this.parry({ ...wave, life: 0 });
+        else this.takeDamage('boss', 'wave', wave.x + wave.w / 2);
+      }
+      if (this.boss.active && !this.boss.defeated && overlap(p, this.boss)) {
+        if (p.dashTimer > 0 && this.boss.phase === 'attack' && !p.dashHitBoss) {
+          p.dashHitBoss = true; this.parry({ x: p.x + p.w / 2, y: p.y + p.h / 2, life: 0 }); this.hitBoss(2);
+        } else if (this.boss.phase !== 'intro' && this.boss.phase !== 'recovery') this.takeDamage('boss', this.boss.attack, this.boss.x + this.boss.w / 2);
+      }
       if (p.y > 900) this.respawn('fall');
       else if (this.invulnerable <= 0) {
         const hit = this.hazards.find(h => h.active && overlap(p, h));
-        if (hit) this.respawn('hazard', hit.kind);
-        else if (this.boss.active && !this.boss.defeated && (overlap(p, this.boss) || this.bossProjectiles.some(ball => circleHits(ball, p)))) this.respawn('boss', 'boss');
+        if (hit) this.takeDamage('hazard', hit.kind, hit.x + hit.w / 2);
       }
     }
     respawn(reason = 'fall', kind = null) {
       this.penalty += 3; this.elapsed += 3; this.falls++;
       this.p.x = this.checkpoint.x; this.p.y = this.checkpoint.y;
       this.p.vx = 0; this.p.vy = 0; this.p.grounded = true; this.p.jumps = 0;
+      this.p.energy = this.p.maxEnergy; this.p.stunTimer = 0; this.p.dashTimer = 0;
       this.p.supportId = this.level.solids.find(s => s.type === 'ground' && this.p.x >= s.x && this.p.x + this.p.w < s.x + s.w).id;
       this.invulnerable = 1.3;
-      if (reason === 'hazard' || reason === 'boss') this.hits++;
-      if (reason === 'boss') this.bossProjectiles = [];
+      this.bossProjectiles = []; this.enemyProjectiles = []; this.shockwaves = [];
+      if (this.boss.active && !this.boss.defeated) { this.boss.x = this.boss.arena.end - this.boss.w - 60; this.boss.y = 410; this.bossPhase('approach'); }
       this.coyote = PHYSICS.coyote; this.jumpBuffer = 0;
       this.emit('fall', { penalty: 3, reason, kind, text: reason === 'boss' ? 'Köpüğün gücü sende! Temizlik ilerlemen korundu. +3 sn' : reason === 'hazard' ? (kind === 'barrier' ? 'Işığın ritmini izle, yeniden deneyebilirsin! +3 sn' : 'Temizlik robotuna yol ver, yeniden deneyebilirsin! +3 sn') : 'Yeniden dene, başarabilirsin! +3 sn' });
     }
     deliver() {
+      if (this.practice) return false;
       if (this.mode !== 'playing' || !this.nearMachine) return false;
       if (this.collected < 8) { this.emit('needMore', { text: 'Biraz daha keşfet! En az 8 ambalaj gerekiyor.' }); return false; }
-      if (!this.boss.defeated) { this.emit('bossRequired', { text: 'Önce çöp bossunu Döngü Köpüğüyle dağıt. F / Köpük düğmesini basılı tut!' }); return false; }
+      if (!this.boss.defeated) { this.emit('bossRequired', { text: 'Çöp Adamın saldırısından kaç; açılan çekirdeğe köpük gönder!' }); return false; }
       this.mode = 'delivering'; this.deliveryProgress = 0; this.p.vx = 0; this.p.vy = 0;
       this.emit('delivery', { count: this.collected }); return true;
     }
@@ -396,7 +561,7 @@
       const timeBonus = Math.max(0, Math.floor(this.level.targetTime - this.elapsed)) * 5;
       const perfectBonus = count === 12 ? 100 : 0;
       const bossBonus = this.boss.defeated ? 100 : 0;
-      this.result = { count, stars, base, timeBonus, perfectBonus, bossBonus, total: base + timeBonus + perfectBonus + bossBonus, time: this.elapsed, badge: count === 12, mistakes: this.falls, hits: this.hits };
+      this.result = { count, stars, base, timeBonus, perfectBonus, bossBonus, actionBonus: this.actionBonus, bestCombo: this.bestCombo, enemiesDefeated: this.enemiesDefeated, counters: this.counters, total: base + timeBonus + perfectBonus + bossBonus + this.actionBonus, time: this.elapsed, badge: count === 12, mistakes: this.falls, hits: this.hits };
       this.mode = 'complete'; this.deliveryProgress = 1;
       this.emit('complete', { result: this.result });
     }

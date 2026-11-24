@@ -11,11 +11,13 @@ APK indirmeden ücretsiz kurulum:
 
 Telefonu yatay tut. Yön düğmesi basılıyken ZIPLA ve KÖPÜK düğmelerini kullanabilirsin. Çift zıplama için havada tekrar ZIPLA düğmesine bas. KÖPÜK sınırsızdır; basılı tutarak canavarları yok edebilirsin.
 
-APK, GitHub Actions üzerinde başarıyla derlendi. AndroidManifest, program kodu ve sıkıştırma bütünlüğü kontrol edildi; oyunun motor, çizim, kayıt, uygulama, telefon CSS ve gerçek RVM logosu dosyaları kaynaklarla birebir aynı. Fiziksel Android cihaz üzerinde kurulum/oynama testi henüz yapılmadı.
+20261124-4 sürümünün kaynakları hazırlandı. Yeni APK ancak Android APK iş akışı başarıyla tamamlanıp doğrulandıktan sonra aynı indirme adresinde yayımlanır. İş akışı APK imzasını, paket/sürüm bilgisini ve SHA-256 değerini denetler. Fiziksel Android cihaz üzerinde kurulum/oynama testi henüz yapılmadı.
 
 Android paket adı: com.rvmsystems.doadongukosusu
-Sürüm: 20261124-3 (test/debug)
-APK SHA-256: e161ea2b5ff5be30fec8f981d5ce2ecbea59ecae760166d7909346aebe972535
-Derleme: https://github.com/heyyo3300-ux/PROJELER/actions/runs/45454335253
+Hedef sürüm: 20261124-4 (test/debug)
+Yeni APK SHA-256: Başarılı derlemenin apk-verification.txt çıktısında bulunur.
+Derlemeler: https://github.com/heyyo3300-ux/PROJELER/actions/workflows/android.yml
+
+Önceki test APK'sının imza anahtarı kalıcı saklanmamıştı. Yeni APK'nın imzası farklı olursa Android doğrudan güncellemeyi kabul etmeyebilir. Mevcut ilerlemeni korumadan eski APK'yı kaldırma; kaldırmak uygulama kayıtlarını silebilir. Bu sırada tarayıcı sürümünü açmak eski APK'daki kayıtları değiştirmez.
 
 Tarayıcı ve APK kişisel kayıtları birbirinden ayrıdır. Aylık çevrimiçi sıralama ve gerçek hediye kampanyası henüz devrede değildir. Çocuklardan bilgi, hesap veya ödeme istenmez.

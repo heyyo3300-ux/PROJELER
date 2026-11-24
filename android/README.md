@@ -4,7 +4,7 @@ Bu proje mevcut web oyununu tamamen APK içine paketler. Oyun çevrimdışı ça
 reklam, hesap, konum, kamera veya İnternet izni istemez. Kayıtlar uygulamanın
 WebView yerel deposunda tutulur; tarayıcı sürümündeki kayıtlar otomatik taşınmaz.
 
-Paket: `com.rvmsystems.doadongukosusu` · Sürüm: `20261124-3` · Android 7.0+.
+Paket: `com.rvmsystems.doadongukosusu` · Sürüm: `20261124-4` · Android 7.0+.
 
 ## Derleme
 
@@ -19,6 +19,18 @@ Web varlıkları GitHub'da `docs/` altındaysa iş akışı
 `node android/prepare-assets.cjs --source docs` kullanır. Çıktı:
 `app/build/outputs/apk/debug/app-debug.apk`. Bu test APK'sı SDK debug anahtarıyla
 imzalanır; Google Play yayını veya mağaza hesabı oluşturulmaz.
+
+İş akışı APK'yı yayımlamadan önce `apksigner verify --verbose --print-certs`
+ile imzasını, `aapt2 dump badging` ile paket kimliğini ve sürümünü doğrular.
+SHA-256, sürüm bilgisi ve sertifika çıktısı APK ile aynı derleme çıktısındaki
+`apk-verification.txt` dosyasına yazılır. Bu doğrulama fiziksel Android cihazda
+kurulum veya oynama testi yapıldığı anlamına gelmez.
+
+Test APK'sının debug anahtarı her yeni çalıştırıcıda yeniden üretilebilir;
+önceki APK'nın anahtarı kalıcı saklanmadığından imzaların aynı olduğu garanti
+edilmez. Android farklı imzalı bir güncellemeyi kabul etmeyebilir. Eski APK'yı
+kaldırmak uygulamadaki kayıtları silebilir; kayıtlar korunmadan kaldırma
+önerilmez. Tarayıcı/PWA sürümü mevcut APK kayıtlarını değiştirmez.
 
 Güncel oyun APK içine kopyalandığı için `window.DOA_NATIVE=true` işareti eklenir.
 Web sürümü servis çalışanını kaydetmeden önce bu işareti kontrol etmelidir.

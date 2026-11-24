@@ -10,8 +10,8 @@ android {
         applicationId 'com.rvmsystems.doadongukosusu'
         minSdk 24
         targetSdk 35
-        versionCode 202611243
-        versionName '20261124-3'
+        versionCode 202611244
+        versionName '20261124-4'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

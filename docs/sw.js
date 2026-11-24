@@ -1,6 +1,6 @@
 'use strict';
 // A new explicit version installs the whole game before replacing its cache.
-const VERSION = '20261124-3';
+const VERSION = '20261124-4';
 const CACHE_PREFIX = 'doa-dongu-';
 const CACHE_NAME = CACHE_PREFIX + VERSION;
 const BASE = new URL('./', self.location.href);

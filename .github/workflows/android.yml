@@ -32,9 +32,22 @@ jobs:
       - name: Build installable test APK
         working-directory: android
         run: gradle --no-daemon assembleDebug
+      - name: Verify APK signature and release metadata
+        run: |
+          APK_PATH='android/app/build/outputs/apk/debug/app-debug.apk'
+          VERIFY_PATH='android/app/build/outputs/apk/debug/apk-verification.txt'
+          SDK_TOOL_PATH='/usr/local/lib/android/sdk/build-tools/35.0.0'
+          "$SDK_TOOL_PATH/apksigner" verify --verbose --print-certs "$APK_PATH" | tee "$VERIFY_PATH"
+          "$SDK_TOOL_PATH/aapt2" dump badging "$APK_PATH" | tee -a "$VERIFY_PATH"
+          grep -F "package: name='com.rvmsystems.doadongukosusu'" "$VERIFY_PATH"
+          grep -F "versionCode='202611244'" "$VERIFY_PATH"
+          grep -F "versionName='20261124-4'" "$VERIFY_PATH"
+          sha256sum "$APK_PATH" | tee -a "$VERIFY_PATH"
       - uses: actions/upload-artifact@v4
         with:
-          name: DOA-Dongu-Kosusu-Android-20261124-3
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: DOA-Dongu-Kosusu-Android-20261124-4
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/debug/apk-verification.txt
           if-no-files-found: error
           retention-days: 14
