@@ -26,4 +26,4 @@ Tasarım referansı: 2024 BAFTA Aile Oyunu ödüllü Super Mario Bros. Wonder. N
 https://www.bafta.org/awards/games/family/
 https://www.nintendo.com/sg/interview/aqmx/03.html
 
-Android test APK: Yeni v5 derleme ve imza doğrulaması yayın sırasında eklenecek. Fiziksel Android cihaz testi yapılmadı. Rekorlar kişiseldir; çevrim içi aylık yarışma devrede değildir.
+Android test APK: GitHub Actions 45467314458 başarılı. v2 imza, com.rvmsystems.doadongukosusu paketi, 202611245 kodu, 20261124-5 sürümü doğrulandı. APK 1338040 bayt; SHA-256 828eb5abe57e0d62a8739a285c8a9085cceab54dfbf6a500a924a54be37032a1. Motor, çizimler, uygulama, kayıt, stiller ve gerçek logo kaynaklarla birebir aynı. Fiziksel Android cihaz testi yapılmadı. Rekorlar kişiseldir; çevrim içi aylık yarışma devrede değildir.

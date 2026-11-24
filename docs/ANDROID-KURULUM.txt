@@ -1,8 +1,8 @@
 DOA DÖNGÜ KOŞUSU — ANDROID
 
-Yeni test APK yayını hazırlanıyor:
+Güncel Android test APK’sı:
 https://heyyo3300-ux.github.io/PROJELER/DOA-Dongu-Kosusu-Android-20261124-5.apk
-Bu bağlantı, 20261124-5 derlemesi doğrulanıp yayımlandıktan sonra yeni sürümü indirir. APK test/debug paketidir; Google Play yayını değildir.
+Sürüm 20261124-5. APK test/debug paketidir; Google Play yayını değildir.
 
 APK indirmeden ücretsiz kurulum:
 1. Android telefonunda Chrome ile https://heyyo3300-ux.github.io/PROJELER/ adresini aç.
@@ -12,11 +12,11 @@ APK indirmeden ücretsiz kurulum:
 Telefonu yatay tut. Üç büyük düğme vardır: SOL, SAĞ ve ZIPLA. Yön düğmesini basılı tutarken ZIPLA düğmesine dokunabilirsin. Çift zıplama için havada tekrar ZIPLA düğmesine bas. On parkurda ambalajları topla, platformları ve çukurları aş; en az 8 ambalajı bölüm sonundaki DOA makinesine teslim et.
 
 Android paket adı: com.rvmsystems.doadongukosusu
-Hedef sürüm: 20261124-5 (test/debug)
-Yeni APK SHA-256: Başarılı derlemenin apk-verification.txt çıktısında bulunur.
+Doğrulanan sürüm: 20261124-5 (test/debug)
+APK SHA-256: 828eb5abe57e0d62a8739a285c8a9085cceab54dfbf6a500a924a54be37032a1
 Derlemeler: https://github.com/heyyo3300-ux/PROJELER/actions/workflows/android.yml
 
-İş akışı yeni APK'nın imzasını, paket/sürüm bilgisini ve SHA-256 değerini denetler. Bu sürümün derleme ve yayını tamamlandığı henüz doğrulanmadı. Fiziksel Android cihaz üzerinde kurulum/oynama testi yapılmadı.
+İş akışı yeni APK'nın imzasını, paket/sürüm bilgisini ve SHA-256 değerini denetler. GitHub Actions 45467314458 derlemesi başarılı: v2 imza, paket adı ve 202611245 sürüm kodu doğrulandı. Fiziksel Android cihaz üzerinde kurulum/oynama testi yapılmadı.
 
 Önceki test APK'sının imza anahtarı kalıcı saklanmamıştı. Yeni APK'nın imzası farklı olursa Android doğrudan güncellemeyi kabul etmeyebilir. Mevcut ilerlemeni korumadan eski APK'yı kaldırma; kaldırmak uygulama kayıtlarını silebilir. Bu sırada tarayıcı sürümünü açmak eski APK'daki kayıtları değiştirmez.
 
