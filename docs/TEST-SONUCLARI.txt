@@ -1,0 +1,29 @@
+DOA DÖNGÜ KOŞUSU — ATIK TOPLAMA VE PARKUR
+Sürüm: 20261124-5
+
+55 otomatik test başarılı; 0 başarısız.
+Komut: node --test tests/engine.test.cjs tests/progress.test.cjs tests/parkour-review.test.cjs tests/app.test.cjs android/tests/pwa.test.cjs
+
+10 özgün parkur: Yeşil Park, Temiz Sahil, Geleceğin Şehri, Rüzgâr Ormanı, Döngü Vadisi, Yeşil Enerji Üssü, Sulak Alan Macerası, Buzul Işıltısı, Jeotermal Keşif, Döngü Bahçesi.
+Uzunluklar: 3100 / 3700 / 4300 / 4900 / 5500 / 6100 / 6600 / 7100 / 7600 / 8100.
+En geniş çukurlar: 120 / 140 / 160 / 190 / 210 / 220 / 230 / 240 / 250 / 260.
+Her bölüm: 8 alt rota ambalajı ve 4 isteğe bağlı yüksek rota ambalajı; plastik şişe, sağlam cam ve içecek kutusu. Tüm platformlara ve ambalajlara gerçek zıplama fiziğiyle erişilebildiği kontrol edildi. Son bölümde erişimi güç olan platforma ara basamak eklendi.
+
+20 kesintisiz rota: Her bölümde hem en az 8 ambalajlık alt yol hem de 12 ambalajlık tam yol yalnızca sol/sağ/zıplama girdileriyle tamamlandı. Konum veya ambalaj sayısı değiştirilmiyor. On tam rotada 0 güvenli dönüş.
+Tam rota örnek süreleri (otomatik oynatma): 11.13 / 12.36 / 14.17 / 19.66 / 22.51 / 23.90 / 30.46 / 29.12 / 27.92 / 31.28 sn. Bunlar insan oyuncu ortalaması veya sıralama verisi değildir.
+
+Gerçek tarayıcıda 10 bölüm baştan sona tekrarlandı: fiziksel toplama, DOA'ya doğrudan teslim, aktarım animasyonu sırasında süre durması, 3 yıldız, eksiksiz toplama bonusu, sırayla bölüm açılması, yenilemede kayıtlar ve test sonunda eski cihaz kaydının geri yüklenmesi başarılı.
+
+Hareket/çift zıplama, tuş bırakma, kenardan ayrıldıktan sonraki kısa zıplama payı, inişten önce basılan tuşun algılanması, kasa çarpışması, hareketli platformla taşınma, yaylı zemin, ters bant, hız şeridi, çöken platformun yenilenmesi, buzda kayma, zararsız yükselen hava ve zamanlı mekanik engeller doğrulandı.
+Düşüş/engel teması güvenli noktaya döndürür; tam +3 saniye ekler ve ambalajları korur. Kontrol noktaları sağlam zeminde ve engellerin hareket alanı dışındadır.
+8–9 ambalaj=1 yıldız; 10–11=2; 12=3 yıldız, +100 ve Döngü Kahramanı. Puan: ambalaj x10 + süre bonusu + eksiksiz toplama bonusu.
+
+Canavar, saldırı, silah, enerji kalbi ve dövüş kontrolleri çalışma kodundan ve arayüzden kaldırıldı. Telefonda yalnızca SOL/SAĞ/ZIPLA var. Bağımsız çoklu dokunma, otomatik duraklama, ses ve eski 3/6 bölümlük v1 kayıtları sınandı. 844x390 yatay ve 390x844 dikey telefon görünümü tarayıcıda incelendi; yatay dokunmatik hareket ve zıplama denendi.
+
+Gerçek RVM logosu değiştirilmedi: girişte ve robotta aynı images.png, 800:297 oranıyla kullanılıyor. 10 dünya ve 11 mekanizma türünde 80'den fazla gerçek çizim çağrısı, geçerli Canvas koordinatları, teslim ve doğanın canlanması doğrulandı.
+
+Tasarım referansı: 2024 BAFTA Aile Oyunu ödüllü Super Mario Bros. Wonder. Nintendo geliştirici söyleşisindeki farklı beceri düzeylerine alan açan yollar ve görünür zorluk yaklaşımı incelendi. Özgün RVM çizimleri ve parkurları kullanıldı.
+https://www.bafta.org/awards/games/family/
+https://www.nintendo.com/sg/interview/aqmx/03.html
+
+Android test APK: Yeni v5 derleme ve imza doğrulaması yayın sırasında eklenecek. Fiziksel Android cihaz testi yapılmadı. Rekorlar kişiseldir; çevrim içi aylık yarışma devrede değildir.

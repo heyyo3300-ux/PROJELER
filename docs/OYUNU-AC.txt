@@ -1,0 +1,13 @@
+DOA DÖNGÜ KOŞUSU — RVM SYSTEMS
+
+Oyunu aç: https://heyyo3300-ux.github.io/PROJELER/
+Ücretsizdir; şifre veya üyelik istemez.
+
+Telefon: Yatay tut. SOL / SAĞ ile hareket et, ZIPLA ile zıpla. Havadayken tekrar basarak çift zıpla. Yön düğmesini basılı tutarken zıplayabilirsin.
+Bilgisayar: Yön tuşları veya A/D ile hareket; boşluk ile zıplama ve çift zıplama. Esc duraklatır.
+
+10 parkur kolaydan zora açılır. Her bölümde 12 ambalaj var. Güvenli rotada en az 8 ambalajla sona ulaş ve DOA’ya teslim et. Üst yolları keşfedip tüm 12 ambalajı bulursan 3 yıldız ve Döngü Kahramanı rozeti kazanırsın.
+Çukura düşünce veya hareketli engele çarpınca güvenli noktadan devam edersin; sürene 3 saniye eklenir, ambalajların korunur.
+
+Rekorlar ve açılan bölümler bu cihazda saklanır. Tarayıcı ve Android uygulamasının kayıtları ayrıdır.
+Android kurulumu için ANDROID-KURULUM.txt dosyasına bak.

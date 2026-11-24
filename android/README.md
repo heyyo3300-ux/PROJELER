@@ -4,7 +4,12 @@ Bu proje mevcut web oyununu tamamen APK içine paketler. Oyun çevrimdışı ça
 reklam, hesap, konum, kamera veya İnternet izni istemez. Kayıtlar uygulamanın
 WebView yerel deposunda tutulur; tarayıcı sürümündeki kayıtlar otomatik taşınmaz.
 
-Paket: `com.rvmsystems.doadongukosusu` · Sürüm: `20261124-4` · Android 7.0+.
+Paket: `com.rvmsystems.doadongukosusu` · Sürüm: `20261124-5` · Android 7.0+.
+
+
+Oyunda yalnızca SOL, SAĞ ve ZIPLA dokunma düğmeleri bulunur. Yön basılıyken
+zıplanabilir; havada tekrar dokunmak çift zıplama yapar. On bölüm artan zorlukta
+ambalaj toplama ve platform geçişi sunar; en az sekiz ambalaj DOA’ya teslim edilir.
 
 ## Derleme
 

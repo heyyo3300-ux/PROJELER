@@ -1,23 +1,23 @@
 DOA DÖNGÜ KOŞUSU — ANDROID
 
-Telefona doğrudan test APK kurulumu:
-https://heyyo3300-ux.github.io/PROJELER/DOA-Dongu-Kosusu-Android-20261124-4.apk
-Dosyayı Android telefonuna indirip aç. Bu, denemek için hazırlanmış APK sürümüdür; Google Play yayını değildir.
+Yeni test APK yayını hazırlanıyor:
+https://heyyo3300-ux.github.io/PROJELER/DOA-Dongu-Kosusu-Android-20261124-5.apk
+Bu bağlantı, 20261124-5 derlemesi doğrulanıp yayımlandıktan sonra yeni sürümü indirir. APK test/debug paketidir; Google Play yayını değildir.
 
 APK indirmeden ücretsiz kurulum:
 1. Android telefonunda Chrome ile https://heyyo3300-ux.github.io/PROJELER/ adresini aç.
 2. Menüden Uygulamayı yükle / Ana ekrana ekle seçeneğini kullan.
 3. Oyun simgesini aç. İlk çevrimiçi yüklemeden sonra çevrimdışı kullanılabilir. Yeni sürümün ilk açılışı İnternet gerektirir.
 
-Telefonu yatay tut. Ana menüde Çöp Adam’la kapış antrenmanıyla başlayabilirsin. Yön düğmesiyle hareket et; ZIPLA ile çift zıpla. ATIL ile kısa süre korunarak ileri sıyrıl ve doğru anda çöp topunu geri sektir. Çöp Adam açık verince KÖPÜK düğmesini basılı tut. Hareket, zıplama ve köpük birlikte kullanılabilir.
-
-20261124-4 aksiyon sürümü başarıyla derlendi. APK imzası (v2), paket adı, sürüm bilgisi, SHA-256 ve oyun dosyalarının kaynaklarla birebir aynı olması doğrulandı. Fiziksel Android cihaz üzerinde kurulum/oynama testi henüz yapılmadı.
+Telefonu yatay tut. Üç büyük düğme vardır: SOL, SAĞ ve ZIPLA. Yön düğmesini basılı tutarken ZIPLA düğmesine dokunabilirsin. Çift zıplama için havada tekrar ZIPLA düğmesine bas. On parkurda ambalajları topla, platformları ve çukurları aş; en az 8 ambalajı bölüm sonundaki DOA makinesine teslim et.
 
 Android paket adı: com.rvmsystems.doadongukosusu
-Sürüm: 20261124-4 (test/debug)
-APK SHA-256: fd59528a2e523b7aa45793ebb0350246219abb7fdaf0006ceba3d4270d6dceb0
-Doğrulanan derleme: https://github.com/heyyo3300-ux/PROJELER/actions/runs/45460370401
+Hedef sürüm: 20261124-5 (test/debug)
+Yeni APK SHA-256: Başarılı derlemenin apk-verification.txt çıktısında bulunur.
+Derlemeler: https://github.com/heyyo3300-ux/PROJELER/actions/workflows/android.yml
+
+İş akışı yeni APK'nın imzasını, paket/sürüm bilgisini ve SHA-256 değerini denetler. Bu sürümün derleme ve yayını tamamlandığı henüz doğrulanmadı. Fiziksel Android cihaz üzerinde kurulum/oynama testi yapılmadı.
 
 Önceki test APK'sının imza anahtarı kalıcı saklanmamıştı. Yeni APK'nın imzası farklı olursa Android doğrudan güncellemeyi kabul etmeyebilir. Mevcut ilerlemeni korumadan eski APK'yı kaldırma; kaldırmak uygulama kayıtlarını silebilir. Bu sırada tarayıcı sürümünü açmak eski APK'daki kayıtları değiştirmez.
 
-Tarayıcı ve APK kişisel kayıtları birbirinden ayrıdır. Aylık çevrimiçi sıralama ve gerçek hediye kampanyası henüz devrede değildir. Çocuklardan bilgi, hesap veya ödeme istenmez.
+Tarayıcı ve APK kişisel kayıtları birbirinden ayrıdır. Tüm ödüller oyun içidir. Çocuklardan bilgi, hesap veya ödeme istenmez.
