@@ -1,22 +1,21 @@
 DOA DÖNGÜ KOŞUSU — ANDROID
 
-Ücretsiz kurulum (APK indirmeden):
+Telefona doğrudan test APK kurulumu:
+https://heyyo3300-ux.github.io/PROJELER/DOA-Dongu-Kosusu-Android.apk
+Dosyayı Android telefonuna indirip aç. Bu, denemek için hazırlanmış APK sürümüdür; Google Play yayını değildir.
+
+APK indirmeden ücretsiz kurulum:
 1. Android telefonunda Chrome ile https://heyyo3300-ux.github.io/PROJELER/ adresini aç.
-2. Menüden “Uygulamayı yükle” veya “Ana ekrana ekle” seçeneğini kullan.
-3. Oyun simgesini aç. İlk açılışta dosyaların indirilmesini bekle; sonra oyun
-   çevrimdışı da açılabilir. Önceden açılmamış yeni sürüm için İnternet gerekir.
+2. Menüden Uygulamayı yükle / Ana ekrana ekle seçeneğini kullan.
+3. Oyun simgesini aç. İlk çevrimiçi yüklemeden sonra çevrimdışı kullanılabilir. Yeni sürümün ilk açılışı İnternet gerektirir.
 
-Telefonu yatay kullanmak daha geniş bir parkur görünümü sağlar. Sol ve sağ
-düğmelerini basılı tutarken ayrı zıplama düğmesine dokunabilirsin.
+Telefonu yatay tut. Yön düğmesi basılıyken ZIPLA ve KÖPÜK düğmelerini kullanabilirsin. Çift zıplama için havada tekrar ZIPLA düğmesine bas. KÖPÜK sınırsızdır; basılı tutarak canavarları yok edebilirsin.
 
-APK seçeneği:
-android/ klasöründe oyunu telefona ayrı uygulama olarak paketleyen proje ve
-GitHub Actions derleme iş akışı bulunur. Bu bilgisayarda Android SDK/JDK/Gradle
-kurulu değil; burada derlenmiş APK üretilmedi. Yalnızca başarıyla tamamlanan
-Android APK iş akışının çıktısı gerçek kurulabilir APK'dır. Google Play hesabı,
-ücretli servis veya mağaza yayını gerektirmez.
+APK, GitHub Actions üzerinde başarıyla derlendi. AndroidManifest, program kodu ve sıkıştırma bütünlüğü kontrol edildi; oyunun motor, çizim, kayıt, uygulama, telefon CSS ve gerçek RVM logosu dosyaları kaynaklarla birebir aynı. Fiziksel Android cihaz üzerinde kurulum/oynama testi henüz yapılmadı.
 
-Tarayıcı uygulaması ve APK'nın kişisel kayıtları birbirinden ayrıdır.
-Çocuklardan bilgi, hesap veya ödeme istenmez. Tüm ödüller oyun içidir.
+Android paket adı: com.rvmsystems.doadongukosusu
+Sürüm: 20261124-3 (test/debug)
+APK SHA-256: e161ea2b5ff5be30fec8f981d5ce2ecbea59ecae760166d7909346aebe972535
+Derleme: https://github.com/heyyo3300-ux/PROJELER/actions/runs/45454335253
 
-PWA bilgisi: https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable
+Tarayıcı ve APK kişisel kayıtları birbirinden ayrıdır. Aylık çevrimiçi sıralama ve gerçek hediye kampanyası henüz devrede değildir. Çocuklardan bilgi, hesap veya ödeme istenmez.
