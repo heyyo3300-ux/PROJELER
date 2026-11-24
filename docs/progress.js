@@ -9,9 +9,18 @@
   const COLORS = Object.freeze([
     Object.freeze({ id: 'mint', name: 'RVM yeşili', color: '#009c83', unlockAfter: -1 }),
     Object.freeze({ id: 'ocean', name: 'Okyanus mavisi', color: '#3a9bc4', unlockAfter: 0 }),
-    Object.freeze({ id: 'sunset', name: 'Gün batımı', color: '#ed9970', unlockAfter: 1 })
+    Object.freeze({ id: 'sunset', name: 'Gün batımı', color: '#ed9970', unlockAfter: 1 }),
+    Object.freeze({ id: 'lavender', name: 'Lavanta', color: '#9376c5', unlockAfter: 3 }),
+    Object.freeze({ id: 'gold', name: 'Güneş', color: '#d9ad3f', unlockAfter: 4 })
   ]);
-  const defaults = () => ({ version: 1, unlocked: 1, color: 'mint', sound: true, results: [null, null, null] });
+  function levelCount() {
+    let engine = typeof globalThis !== 'undefined' ? globalThis.RVMEngine : null;
+    if (!engine && typeof require === 'function') {
+      try { engine = require('./engine.js'); } catch (_) {}
+    }
+    return engine && Array.isArray(engine.LEVELS) && engine.LEVELS.length ? engine.LEVELS.length : 6;
+  }
+  const defaults = count => ({ version: 1, unlocked: 1, color: 'mint', sound: true, results: Array(count).fill(null) });
   const number = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
   const integer = (value, min, max) => number(value, min, max) && Number.isInteger(value);
   const starsFor = count => count === 12 ? 3 : count >= 10 ? 2 : 1;
@@ -25,24 +34,26 @@
       count: value.count
     };
   }
-  function normalize(value) {
-    const data = defaults();
+  function normalize(value, count) {
+    const data = defaults(count);
     if (!value || typeof value !== 'object' || value.version !== 1) return data;
     if (Array.isArray(value.results)) {
-      for (let i = 0; i < 3; i++) data.results[i] = storedResult(value.results[i]);
+      for (let i = 0; i < count; i++) data.results[i] = storedResult(value.results[i]);
     }
     // A later result cannot open a course without the previous one being finished.
-    if (!data.results[0]) { data.results[1] = null; data.results[2] = null; }
-    else if (!data.results[1]) data.results[2] = null;
-    data.unlocked = data.results[0] ? (data.results[1] ? 3 : 2) : 1;
+    let completed = 0;
+    while (completed < count && data.results[completed]) completed++;
+    for (let i = completed; i < count; i++) data.results[i] = null;
+    data.unlocked = Math.min(count, completed + 1);
     if (typeof value.sound === 'boolean') data.sound = value.sound;
     const selected = COLORS.find(c => c.id === value.color);
     if (selected && (selected.unlockAfter < 0 || data.results[selected.unlockAfter])) data.color = selected.id;
     return data;
   }
   function create(storage) {
+    const count = levelCount();
     const store = {
-      data: defaults(),
+      data: defaults(count),
       available: true,
       save() {
         if (!store.available) return false;
@@ -51,7 +62,7 @@
       },
       record(levelIndex, result) {
         const none = { newBest: false, unlockedLevel: false, unlockedColor: null };
-        if (!integer(levelIndex, 0, 2) || levelIndex >= store.data.unlocked || !result || !number(result.time, 0, 86400) || !integer(result.total, 0, 100000) || !integer(result.count, 8, 12)) return none;
+        if (!integer(levelIndex, 0, count - 1) || levelIndex >= store.data.unlocked || !result || !number(result.time, 0, 86400) || !integer(result.total, 0, 100000) || !integer(result.count, 8, 12)) return none;
         const previous = store.data.results[levelIndex];
         const newBest = !previous || result.time < previous.bestTime;
         const stars = starsFor(result.count);
@@ -64,7 +75,7 @@
         };
         store.data.results[levelIndex] = score;
         const previousUnlocked = store.data.unlocked;
-        store.data.unlocked = Math.max(store.data.unlocked, Math.min(3, levelIndex + 2));
+        store.data.unlocked = Math.max(store.data.unlocked, Math.min(count, levelIndex + 2));
         const color = COLORS.find(c => c.unlockAfter === levelIndex);
         const unlockedColor = color && !previous ? color.id : null;
         store.save();
@@ -85,8 +96,8 @@
       if (!storage || typeof storage.getItem !== 'function' || typeof storage.setItem !== 'function') throw new Error('Storage unavailable');
       const raw = storage.getItem(KEY);
       if (raw) {
-        try { store.data = normalize(JSON.parse(raw)); }
-        catch (_) { store.data = defaults(); }
+        try { store.data = normalize(JSON.parse(raw), count); }
+        catch (_) { store.data = defaults(count); }
       }
       // Probe writes too: some private browser contexts permit reading only.
       store.save();

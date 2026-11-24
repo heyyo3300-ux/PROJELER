@@ -7,6 +7,7 @@
   try { storage = window.localStorage; } catch (_) { storage = null; }
   const store = RVMProgress.create(storage);
   const colors = RVMProgress.COLORS;
+  const levels = RVMEngine.LEVELS, levelCount = levels.length;
   const canvas = $('game-canvas'), ctx = canvas.getContext('2d');
   const hero = $('hero-canvas'), heroCtx = hero.getContext('2d');
   let screen = 'home', previousScreen = 'home', paused = false, game = null, lastResult = null;
@@ -14,8 +15,7 @@
   let particles = [], toastUntil = 0, runTime = 0, latestHud = '', currentLevel = 0;
   let jumpQueued = false, audio = null, lastCollectMessage = 0;
   const keys = new Set(), pointers = {left:new Set(),right:new Set(),jump:new Set()};
-  const levelDescriptions = ['Unutulmaz bir ilk adım. RVM ile tanış, koşmayı ve çift zıplamayı keşfet.','Deniz esintisi, küçük çukurlar ve yüksek yollar. Sahile birlikte nefes ver.','Çatıların üstüne çık! Öğrendiğin her şeyi daha uzun bir rotada kullan.'];
-  const tips = ['Yön tuşları veya A / D ile koş. Boşlukla iki kez zıpla!','Yüksek platformlarda daha çok ambalaj var. Çift zıplamayı dene!','Çukurları ve kasaları aş. 12 ambalajla Döngü Kahramanı ol!'];
+  const recyclingNotes = ['Her ambalajı döngüye geri kazandırmak, kaynaklarımızı daha verimli kullanmaya yardımcı olur.','Sahilde bıraktığımız temiz bir iz, doğa için güzel bir başlangıçtır.','Geri dönüşüm, günlük hayatımızdaki küçük seçimlerle başlar.','Ormanları ve diğer yaşam alanlarını korumak hepimizin elinde.','Ambalajları doğaya bırakmak yerine uygun toplama noktasına ulaştır.','Döngü burada bitmez: Öğrendiklerini arkadaşlarınla paylaş!'];
   const color = () => (colors.find(c=>c.id===store.data.color)||colors[0]).color;
   const formatTime = time => { const t=Math.max(0,Number(time)||0); return String(Math.floor(t/60)).padStart(2,'0')+':'+(t%60).toFixed(1).padStart(4,'0'); };
   const starsHTML = count => '★'.repeat(count)+'<span class="empty">'+'★'.repeat(3-count)+'</span>';
@@ -32,21 +32,30 @@
     window.scrollTo(0,0);
   }
   function renderHome(){
-    $('unlocked-count').textContent=store.data.unlocked+' / 3';
-    $('home-colors').innerHTML=colors.map((c,i)=>{const locked=i>0&&store.data.unlocked<i+1;return '<button class="color-swatch" data-color="'+c.id+'" style="--swatch:'+c.color+'" aria-label="'+c.name+(locked?' — '+i+'. bölümü tamamla':'')+'" title="'+(locked?i+'. bölümü tamamlayınca açılır':c.name)+'" aria-pressed="'+(store.data.color===c.id)+'" '+(locked?'disabled':'')+'><span></span>'+(locked?'<svg><use href="#i-lock"/></svg>':'')+'</button>';}).join('');
+    $('unlocked-count').textContent=store.data.unlocked+' / '+levelCount;
+    $('world-count').textContent=levelCount;
+    $('home-colors').innerHTML=colors.map(c=>{const locked=c.unlockAfter>=0&&!store.data.results[c.unlockAfter],required=c.unlockAfter+1;return '<button class="color-swatch" data-color="'+c.id+'" style="--swatch:'+c.color+'" aria-label="'+c.name+(locked?' — '+required+'. bölümü tamamla':'')+'" title="'+(locked?required+'. bölümü tamamlayınca açılır':c.name)+'" aria-pressed="'+(store.data.color===c.id)+'" '+(locked?'disabled':'')+'><span></span>'+(locked?'<svg><use href="#i-lock"/></svg>':'')+'</button>';}).join('');
     $('color-name').textContent=(colors.find(c=>c.id===store.data.color)||colors[0]).name;
     $('play-button').innerHTML='<svg><use href="#i-play"/></svg> '+(store.data.results.some(Boolean)?'Maceraya devam':'Oyuna başla');
     updateSound();persistStatus();
   }
+  function difficultyHTML(level){
+    const rating=level.difficultyRating||level.id+1;
+    return '<div class="difficulty-meter"><span>'+ (level.difficulty||'Zorluk '+rating)+'</span><span class="difficulty-bars" aria-label="Zorluk '+rating+' / '+levelCount+'">'+Array.from({length:levelCount},(_,i)=>'<i class="'+(i<rating?'filled':'')+'"></i>').join('')+'</span></div>';
+  }
   function renderLevels(){
-    $('level-cards').innerHTML=RVMEngine.LEVELS.map((level,i)=>{
+    const totalStars=store.data.results.reduce((sum,r)=>sum+(r?r.stars:0),0),finished=store.data.results.filter(Boolean).length;
+    $('journey-completed').textContent=finished+' / '+levelCount+' parkur tamamlandı';
+    $('journey-stars').textContent=totalStars+' / '+levelCount*3;
+    $('journey-map').innerHTML=levels.map((level,i)=>{const locked=i>=store.data.unlocked,rec=store.data.results[i],current=!locked&&!rec;return '<button class="journey-stop '+level.theme+' '+(locked?'locked':rec?'cleared':'current')+'" data-level="'+i+'" aria-label="'+level.name+(locked?' — önceki bölümü tamamla':' — '+(rec?'tamamlandı':'oyna'))+'" '+(locked?'disabled':'')+'><span class="journey-dot">'+(locked?'<svg><use href="#i-lock"/></svg>':rec?'<svg><use href="#i-check"/></svg>':String(i+1).padStart(2,'0'))+'</span><strong>'+level.name+'</strong><small>'+(current?'Sıradaki maceran':level.difficulty||'Parkur '+(i+1))+'</small></button>';}).join('');
+    $('level-cards').innerHTML=levels.map((level,i)=>{
       const locked=i>=store.data.unlocked,rec=store.data.results[i];
-      return '<article class="level-card '+(locked?'locked':'')+'"><div class="level-art '+level.theme+'"><span class="art-sun"></span><span class="art-cloud"></span><span class="art-tree"></span><span class="level-index">BÖLÜM 0'+(i+1)+'</span>'+(locked?'<span class="lock-bubble"><svg><use href="#i-lock"/></svg></span>':'')+'</div><div class="level-card-body"><h3>'+level.name+'</h3><p class="level-desc">'+levelDescriptions[i]+'</p><div class="level-stars" aria-label="'+(rec?rec.stars:0)+' yıldız">'+starsHTML(rec?rec.stars:0)+'</div><div class="level-record">'+(locked?RVMEngine.LEVELS[i-1].name+' bölümünü tamamlayınca açılır.':rec?'En iyi süre <strong>'+formatTime(rec.bestTime)+'</strong><br>Yüksek puan <strong>'+rec.highScore+'</strong>'+(rec.badge?' · Döngü Kahramanı':''):'İlk kişisel rekorun seni bekliyor.')+'</div><button class="button '+(locked?'secondary':'primary')+'" data-level="'+i+'" '+(locked?'disabled':'')+'>'+(locked?'<svg><use href="#i-lock"/></svg> Henüz kilitli':rec?'Yeniden keşfet':'Bu parkurda koş')+'</button></div></article>';
+      return '<article class="level-card '+(locked?'locked':'')+'"><div class="level-art '+level.theme+'"><span class="art-sun"></span><span class="art-cloud"></span><span class="art-tree"></span><span class="level-index">BÖLÜM '+String(i+1).padStart(2,'0')+'</span>'+(i>=3?'<span class="new-world">YENİ DÜNYA</span>':'')+(locked?'<span class="lock-bubble"><svg><use href="#i-lock"/></svg></span>':'')+'</div><div class="level-card-body">'+difficultyHTML(level)+'<h3>'+level.name+'</h3><p class="level-desc">'+(level.description||level.subtitle)+'</p><div class="mechanic-tag"><svg><use href="#i-spark"/></svg>'+(level.mechanic||'Koş ve çift zıpla')+'</div><div class="level-card-rewards"><div class="level-stars" aria-label="'+(rec?rec.stars:0)+' yıldız">'+starsHTML(rec?rec.stars:0)+'</div><span>12 ambalaj</span></div><div class="level-record">'+(locked?levels[i-1].name+' bölümünü tamamlayınca açılır.':rec?'En iyi süre <strong>'+formatTime(rec.bestTime)+'</strong><br>Yüksek puan <strong>'+rec.highScore+'</strong>'+(rec.badge?' · Döngü Kahramanı':''):'İlk kişisel rekorun seni bekliyor.')+'</div><button class="button '+(locked?'secondary':'primary')+'" data-level="'+i+'" '+(locked?'disabled':'')+'>'+(locked?'<svg><use href="#i-lock"/></svg> Henüz kilitli':rec?'Yeniden keşfet':'Bu parkurda koş')+'</button></div></article>';
     }).join('');
   }
   function updateSound(){const on=store.data.sound;$('sound-button').innerHTML='<svg><use href="#i-'+(on?'sound':'mute')+'"/></svg>';$('sound-button').setAttribute('aria-label',on?'Sesi kapat':'Sesi aç');$('sound-button').title=on?'Sesi kapat':'Sesi aç';$('sound-button').setAttribute('aria-pressed',String(on));}
   function clearControls(){keys.clear();jumpQueued=false;Object.values(pointers).forEach(s=>s.clear());document.querySelectorAll('[data-control]').forEach(b=>b.classList.remove('pressed'));}
-  function startLevel(index){if(index<0||index>=store.data.unlocked||index>2)return;unlockAudio();currentLevel=index;game=new RVMEngine.Game(index);camera=0;particles=[];paused=false;runTime=0;latestHud='';lastCollectMessage=0;toastUntil=0;clearControls();$('toast').classList.remove('visible');$('pause-overlay').hidden=true;$('hud-level-num').textContent='BÖLÜM 0'+(index+1);$('hud-level').textContent=game.level.name;$('game-tip-text').textContent=tips[index];showScreen('game');updateHUD();}
+  function startLevel(index){if(!Number.isInteger(index)||index<0||index>=store.data.unlocked||index>=levelCount)return;unlockAudio();currentLevel=index;game=new RVMEngine.Game(index);camera=0;particles=[];paused=false;runTime=0;latestHud='';lastCollectMessage=0;toastUntil=0;clearControls();$('toast').classList.remove('visible');$('pause-overlay').hidden=true;$('hud-level-num').textContent='BÖLÜM '+String(index+1).padStart(2,'0')+' / '+String(levelCount).padStart(2,'0');$('hud-level').textContent=game.level.name;$('hud-level').title=game.level.name;$('game-tip-text').textContent=game.level.tip||'Koş, çift zıpla; engelleri dikkatle aş!';$('hud-difficulty').textContent=(game.level.difficulty||'Zorluk '+(index+1))+' · En az 8 ambalaj';showScreen('game');updateHUD();}
   function pauseGame(automatic=false){if(screen!=='game'||paused||!game||game.mode==='complete')return;paused=true;clearControls();$('pause-overlay').hidden=false;$('resume-button').focus();if(automatic&&audio&&audio.state==='running')audio.suspend().catch(()=>{});}
   function resumeGame(){if(screen!=='game')return;paused=false;accumulator=0;lastFrame=performance.now();$('pause-overlay').hidden=true;clearControls();unlockAudio();}
   function toast(message){$('toast').textContent=message;$('toast').classList.add('visible');toastUntil=performance.now()+2900;}
@@ -55,7 +64,8 @@
   function processEvents(){for(const e of game.drainEvents()){
     if(e.type==='collect'){sound('collect');addParticles(e.x,e.y);if(game.collected===8)toast('Teslime hazırsın! İstersen 12’sini de topla.');else if(game.collected===12)toast('Eksiksiz döngü! Şimdi DOA’ya koş.');else if(game.collected-lastCollectMessage>=4){toast('Harika gidiyorsun! Doğa sana teşekkür ediyor.');lastCollectMessage=game.collected;}}
     else if(e.type==='jump')sound('jump');
-    else if(e.type==='fall'){sound('fall');camera=Math.max(0,game.p.x-viewW*.3);toast('Bir daha dene, başarabilirsin! +3 saniye');}
+    else if(e.type==='fall'){sound('fall');camera=Math.max(0,game.p.x-viewW*.3);toast(e.text||'Bir daha dene, başarabilirsin! +3 saniye');}
+    else if(e.type==='checkpoint'){tone(660,.12);tone(880,.14,.1);toast(e.text||'Güvenli nokta! Buradan devam edebilirsin.');}
     else if(e.type==='delivery'){sound('complete');toast('Döngü tamamlanıyor. Doğa canlanıyor!');}
     else if(e.type==='needMore')toast(e.text||'DOA için en az 8 ambalaj topla.');
     else if(e.type==='complete')finishLevel(e.result||game.result);
@@ -67,8 +77,11 @@
     $('result-description').textContent=result.count+' ambalajı '+game.level.name+' bölümünde yeni bir döngüye kattın.';
     $('hero-badge').hidden=!result.badge;$('result-base-label').textContent=result.count+' ambalaj × 10';$('result-base').textContent=result.base;$('result-time-bonus').textContent='+'+result.timeBonus;$('perfect-row').hidden=!result.perfectBonus;$('result-total').textContent=result.total;
     $('result-time').textContent=formatTime(result.time);$('result-best').textContent=formatTime(rec.bestTime);$('result-high').textContent=rec.highScore;$('new-record').hidden=!info.newBest;
-    $('unlock-message').textContent=info.unlockedColor?'Yeni robot rengi açıldı: '+(colors.find(c=>c.id===info.unlockedColor)||{}).name+'!':currentLevel===2?'Üç dünyaya da hayat verdin. Kendi rekorunu kırmak için tekrar koş!':'Bir sonraki parkur seni bekliyor!';
-    $('next-button').textContent=currentLevel<2?'Sonraki bölüm':'Bölümleri keşfet';sound('complete');showScreen('result');
+    const rewardText=info.unlockedColor?'Yeni robot rengi açıldı: '+(colors.find(c=>c.id===info.unlockedColor)||{}).name+'! ':'';
+    $('unlock-message').textContent=rewardText+(currentLevel===levelCount-1?'Tüm dünyalara hayat verdin. Şimdi üç yıldızları tamamla!':info.unlockedLevel?levels[currentLevel+1].name+' açıldı!':'Bir sonraki parkur seni bekliyor!');
+    $('result-lesson').textContent=recyclingNotes[currentLevel%recyclingNotes.length];
+    $('result-run-detail').textContent=(game.falls?'Güvenli noktadan dönüş: '+game.falls+' · Ceza: +'+game.penalty+' sn':'Tertemiz koşu! Hiç güvenli noktaya dönmedin.')+' · Hedef süre: '+game.level.targetTime+' sn';
+    $('next-button').textContent=currentLevel<levelCount-1?'Sonraki bölüm':'Bölümleri keşfet';sound('complete');showScreen('result');
   }
   function updateHUD(){if(!game)return;const signature=[formatTime(game.elapsed),game.collected,game.score].join('|');if(signature!==latestHud){$('hud-time').textContent=formatTime(game.elapsed);$('hud-count').innerHTML=game.collected+' <em>/ 12</em>';$('hud-score').textContent=game.score;latestHud=signature;}$('track-fill').style.width=Math.min(100,100*game.p.x/(game.level.width-200))+'%';
     const near=game.nearMachine&&game.mode==='playing';$('delivery-panel').hidden=!near;$('deliver-button').disabled=game.collected<8;$('deliver-button').hidden=game.collected<8;$('delivery-message').textContent=game.collected>=8?'DOA hazır. Döngüyü tamamla!':'DOA için '+(8-game.collected)+' ambalaj daha bul. Geri dönüp keşfedebilirsin!';
@@ -95,21 +108,22 @@
     for(let i=0;i<10;i++){let x=170+i*41,y=450+Math.sin(i*7)*16;c.strokeStyle='#387e56';c.lineWidth=2;c.beginPath();c.moveTo(x,y);c.lineTo(x,y-12);c.stroke();c.fillStyle=i%2?'#ffe58c':'#eaf4c5';for(let a=0;a<5;a++){c.beginPath();c.arc(x+Math.cos(a*1.256)*4,y-12+Math.sin(a*1.256)*4,3,0,7);c.fill();}c.fillStyle='#deb440';c.beginPath();c.arc(x,y-12,2.2,0,7);c.fill();}
     c.fillStyle='#caad4b';for(const [x,y,s] of [[227,180,9],[585,265,7],[122,272,6]]){c.save();c.translate(x,y+Math.sin(t+x)*2);c.rotate(Math.PI/4);c.fillRect(-s/2,-s/2,s,s);c.restore();}c.restore();
   }
-  $('play-button').addEventListener('click',()=>startLevel(Math.min(store.data.unlocked-1,2)));
+  $('play-button').addEventListener('click',()=>startLevel(Math.min(store.data.unlocked-1,levelCount-1)));
   $('levels-button').addEventListener('click',()=>showScreen('levels'));
   $('result-levels').addEventListener('click',()=>showScreen('levels'));
   $('brand-home').addEventListener('click',()=>showScreen('home'));
   document.querySelectorAll('[data-action="home"]').forEach(b=>b.addEventListener('click',()=>showScreen('home')));
   $('home-colors').addEventListener('click',e=>{const b=e.target.closest('[data-color]');if(!b||b.disabled)return;store.setColor(b.dataset.color);renderHome();sound('click');});
-  $('level-cards').addEventListener('click',e=>{const b=e.target.closest('[data-level]');if(b&&!b.disabled)startLevel(Number(b.dataset.level));});
+  const chooseLevel=e=>{const b=e.target.closest('[data-level]');if(b&&!b.disabled)startLevel(Number(b.dataset.level));};
+  $('level-cards').addEventListener('click',chooseLevel);$('journey-map').addEventListener('click',chooseLevel);
   function openHelp(){previousScreen=screen;if(screen==='game')pauseGame();showScreen('help');}
   $('help-button').addEventListener('click',openHelp);$('how-button').addEventListener('click',openHelp);
   $('help-back').addEventListener('click',()=>{const wasGame=previousScreen==='game';showScreen(wasGame?'game':previousScreen==='result'?'result':'home');if(wasGame)pauseGame();});
-  $('help-play').addEventListener('click',()=>{if(previousScreen==='game'&&game){showScreen('game');resumeGame();}else startLevel(Math.min(store.data.unlocked-1,2));});
+  $('help-play').addEventListener('click',()=>{if(previousScreen==='game'&&game){showScreen('game');resumeGame();}else startLevel(Math.min(store.data.unlocked-1,levelCount-1));});
   $('sound-button').addEventListener('click',()=>{store.setSound(!store.data.sound);updateSound();persistStatus();if(store.data.sound){unlockAudio();tone(700);}else if(audio)audio.suspend().catch(()=>{});});
   $('pause-button').addEventListener('click',()=>pauseGame());$('resume-button').addEventListener('click',resumeGame);
   $('restart-button').addEventListener('click',()=>startLevel(currentLevel));$('retry-button').addEventListener('click',()=>startLevel(currentLevel));
-  $('next-button').addEventListener('click',()=>currentLevel<2?startLevel(currentLevel+1):showScreen('levels'));
+  $('next-button').addEventListener('click',()=>currentLevel<levelCount-1?startLevel(currentLevel+1):showScreen('levels'));
   $('deliver-button').addEventListener('click',deliver);
   window.addEventListener('keydown',e=>{if(screen!=='game')return;const handled=['ArrowLeft','ArrowRight','KeyA','KeyD','Space','Escape','KeyP','KeyE'];if(!handled.includes(e.code))return;e.preventDefault();if(e.code==='Escape'||e.code==='KeyP'){if(!e.repeat)paused?resumeGame():pauseGame();return;}if(paused)return;unlockAudio();if(e.code==='Space'&&!e.repeat)jumpQueued=true;if(e.code==='KeyE'&&!e.repeat)deliver();keys.add(e.code);});
   window.addEventListener('keyup',e=>keys.delete(e.code));
